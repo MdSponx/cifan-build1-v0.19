@@ -165,147 +165,118 @@ class ShortFilmCommentsService {
   }
 
   /**
-   * Get all comments for a submission
+   * Get all comments for a submission with robust error handling and fallback strategies
    */
   async getComments(submissionId: string): Promise<ShortFilmComment[]> {
+    console.log('🔍 getComments called for submissionId:', submissionId);
+    
+    if (!submissionId) {
+      console.warn('⚠️ No submissionId provided, returning empty array');
+      return [];
+    }
+
     try {
-      console.log('🔍 getComments called for submissionId:', submissionId);
       const commentsRef = collection(db, 'submissions', submissionId, 'ShortFilmComments');
       console.log('📂 Comments collection reference created');
       
-      const q = query(
-        commentsRef,
-        where('isDeleted', '==', false),
-        orderBy('createdAt', 'desc')
-      );
-      console.log('🔎 Query created with filters');
+      let snapshot;
+      let queryStrategy = 'filtered';
       
-      const snapshot = await getDocs(q);
-      console.log('📊 Query executed, docs found:', snapshot.docs.length);
-      
-      if (snapshot.docs.length === 0) {
-        console.log('⚠️ No documents found in ShortFilmComments subcollection');
-        console.log('🔍 Checking if subcollection exists by trying to get all docs...');
+      try {
+        // Strategy 1: Try filtered query first (normal operation)
+        console.log('🔎 Attempting filtered query...');
+        const filteredQuery = query(
+          commentsRef,
+          where('isDeleted', '==', false),
+          orderBy('createdAt', 'desc')
+        );
+        snapshot = await getDocs(filteredQuery);
+        console.log('✅ Filtered query successful, docs found:', snapshot.docs.length);
+      } catch (queryError) {
+        console.warn('⚠️ Filtered query failed, trying fallback strategies:', queryError);
         
-        // Try without filters to see if there are any docs at all
-        const allDocsSnapshot = await getDocs(commentsRef);
-        console.log('📋 Total docs in subcollection (including deleted):', allDocsSnapshot.docs.length);
-        
-        if (allDocsSnapshot.docs.length > 0) {
-          console.log('📄 Found docs, checking their structure:');
-          allDocsSnapshot.docs.forEach((doc, index) => {
-            const data = doc.data();
-            console.log(`Doc ${index + 1}:`, {
-              id: doc.id,
-              type: data.type,
-              isDeleted: data.isDeleted,
-              hasScores: !!data.scores,
-              adminId: data.adminId,
-              createdAt: data.createdAt,
-              rawScores: data.scores // Log raw scores to see field names
-            });
-          });
+        try {
+          // Strategy 2: Try query without orderBy (in case of index issues)
+          console.log('🔄 Trying query without orderBy...');
+          const simpleQuery = query(
+            commentsRef,
+            where('isDeleted', '==', false)
+          );
+          snapshot = await getDocs(simpleQuery);
+          queryStrategy = 'simple';
+          console.log('✅ Simple query successful, docs found:', snapshot.docs.length);
+        } catch (simpleError) {
+          console.warn('⚠️ Simple query failed, trying unfiltered query:', simpleError);
+          
+          try {
+            // Strategy 3: Unfiltered query (fallback)
+            console.log('🔄 Trying unfiltered query...');
+            snapshot = await getDocs(commentsRef);
+            queryStrategy = 'unfiltered';
+            console.log('✅ Unfiltered query successful, docs found:', snapshot.docs.length);
+          } catch (unfilteredError) {
+            console.error('❌ All query strategies failed:', unfilteredError);
+            // Return empty array instead of throwing
+            return [];
+          }
         }
       }
+
+      if (snapshot.docs.length === 0) {
+        console.log('📋 No documents found, returning empty array');
+        return [];
+      }
+
+      // Process documents with error handling
+      const comments: ShortFilmComment[] = [];
       
-      const comments = snapshot.docs.map((doc: any) => {
-        const data = doc.data();
-        console.log('📝 Processing comment:', {
-          id: doc.id,
-          type: data.type,
-          adminId: data.adminId,
-          hasScores: !!data.scores,
-          rawScores: data.scores // Log raw scores
-        });
-        
-        // Map database scores to application format
-        const mappedScores = this.mapDatabaseScoresToApp(data.scores);
-        console.log('🔄 Mapped scores:', {
-          original: data.scores,
-          mapped: mappedScores
-        });
-        
-        return {
-          id: doc.id,
-          submissionId: data.submissionId,
-          adminId: data.adminId,
-          adminName: data.adminName,
-          adminEmail: data.adminEmail,
-          content: data.content,
-          type: data.type,
-          scores: mappedScores,
-          metadata: data.metadata || {},
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate(),
-          isEdited: data.isEdited || false,
-          isDeleted: data.isDeleted || false
-        };
-      });
-      
-      console.log('✅ Returning', comments.length, 'comments');
-      return comments;
-    } catch (error) {
-      console.error('❌ Error fetching comments:', error);
-      console.error('❌ Error details:', {
-        code: (error as any).code,
-        message: (error as any).message,
-        stack: (error as any).stack
-      });
-      throw new Error('Failed to fetch comments');
-    }
-  }
-
-  /**
-   * Subscribe to real-time comments updates
-   */
-  subscribeToComments(
-    submissionId: string,
-    callback: (comments: ShortFilmComment[]) => void
-  ): () => void {
-    try {
-      console.log('🔍 Setting up comments subscription for submission:', submissionId);
-      const commentsRef = collection(db, 'submissions', submissionId, 'ShortFilmComments');
-      const q = query(
-        commentsRef,
-        where('isDeleted', '==', false),
-        orderBy('createdAt', 'desc')
-      );
-
-      return onSnapshot(q, (snapshot: any) => {
-        console.log('📊 Comments snapshot received:');
-        console.log('- Document count:', snapshot.docs.length);
-        console.log('- Snapshot metadata:', snapshot.metadata);
-        
-        if (snapshot.docs.length === 0) {
-          console.log('⚠️ No comments found in ShortFilmComments subcollection');
-        }
-
-        const comments = snapshot.docs.map((doc: any) => {
-          const data = doc.data();
-          console.log('📄 Processing comment document:', {
-            id: doc.id,
+      snapshot.docs.forEach((docSnap, index) => {
+        try {
+          const data = docSnap.data();
+          
+          console.log(`📝 Processing comment ${index + 1}/${snapshot.docs.length}:`, {
+            id: docSnap.id,
             type: data.type,
+            adminId: data.adminId,
+            adminName: data.adminName,
             hasScores: !!data.scores,
-            adminId: data.adminId,
-            adminName: data.adminName,
             isDeleted: data.isDeleted,
-            rawScores: data.scores // Log raw scores
+            createdAt: data.createdAt,
+            rawScores: data.scores
           });
-          
-          // Map database scores to application format
-          const mappedScores = this.mapDatabaseScoresToApp(data.scores);
-          console.log('🔄 Mapped scores in subscription:', {
-            original: data.scores,
-            mapped: mappedScores
-          });
-          
-          return {
-            id: doc.id,
-            submissionId: data.submissionId,
+
+          // Apply manual filtering if using unfiltered query
+          if (queryStrategy === 'unfiltered' && data.isDeleted === true) {
+            console.log(`⏭️ Skipping deleted document: ${docSnap.id}`);
+            return;
+          }
+
+          // Validate required fields
+          if (!data.adminId || !data.adminName || !data.type) {
+            console.warn(`⚠️ Document ${docSnap.id} missing required fields, skipping`);
+            return;
+          }
+
+          // Map database scores to application format with error handling
+          let mappedScores;
+          try {
+            mappedScores = this.mapDatabaseScoresToApp(data.scores);
+            console.log('🔄 Mapped scores successfully:', {
+              original: data.scores,
+              mapped: mappedScores
+            });
+          } catch (mappingError) {
+            console.warn(`⚠️ Error mapping scores for document ${docSnap.id}:`, mappingError);
+            mappedScores = undefined;
+          }
+
+          const comment: ShortFilmComment = {
+            id: docSnap.id,
+            submissionId: data.submissionId || submissionId,
             adminId: data.adminId,
             adminName: data.adminName,
-            adminEmail: data.adminEmail,
-            content: data.content,
+            adminEmail: data.adminEmail || '',
+            content: data.content || '',
             type: data.type,
             scores: mappedScores,
             metadata: data.metadata || {},
@@ -314,26 +285,200 @@ class ShortFilmCommentsService {
             isEdited: data.isEdited || false,
             isDeleted: data.isDeleted || false
           };
-        });
-        
-        console.log('✅ Processed comments:', comments.length);
-        console.log('📋 Comments summary:', comments.map((c: ShortFilmComment) => ({
-          id: c.id,
-          type: c.type,
-          hasScores: !!c.scores,
-          adminName: c.adminName
-        })));
-        
-        callback(comments);
-      }, (error: any) => {
-        console.error('❌ Error in comments subscription:', error);
-        console.error('❌ Error code:', error.code);
-        console.error('❌ Error message:', error.message);
-        console.error('❌ Full error:', error);
-        callback([]);
+
+          comments.push(comment);
+          
+        } catch (processingError) {
+          console.error(`❌ Error processing document ${docSnap.id}:`, processingError);
+          // Continue processing other documents instead of failing completely
+        }
       });
+
+      // Sort comments if we used unfiltered query
+      if (queryStrategy === 'unfiltered' || queryStrategy === 'simple') {
+        comments.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        console.log('🔄 Manually sorted comments by createdAt desc');
+      }
+      
+      console.log(`✅ Successfully processed ${comments.length} comments using ${queryStrategy} strategy`);
+      return comments;
+      
     } catch (error) {
-      console.error('❌ Error setting up comments subscription:', error);
+      console.error('❌ Fatal error in getComments:', error);
+      console.error('❌ Error details:', {
+        code: (error as any).code,
+        message: (error as any).message,
+        name: (error as any).name
+      });
+      
+      // Return empty array instead of throwing to prevent UI crashes
+      console.log('🔄 Returning empty array due to error');
+      return [];
+    }
+  }
+
+  /**
+   * Subscribe to real-time comments updates with robust error handling and fallback strategies
+   */
+  subscribeToComments(
+    submissionId: string,
+    callback: (comments: ShortFilmComment[]) => void
+  ): () => void {
+    console.log('🔍 Setting up comments subscription for submission:', submissionId);
+    
+    if (!submissionId) {
+      console.warn('⚠️ No submissionId provided for subscription');
+      callback([]);
+      return () => {};
+    }
+
+    try {
+      const commentsRef = collection(db, 'submissions', submissionId, 'ShortFilmComments');
+      
+      // Try multiple query strategies for subscription
+      let unsubscribe: (() => void) | null = null;
+      
+      const setupSubscription = (queryToUse: any, strategyName: string) => {
+        console.log(`📡 Setting up ${strategyName} subscription...`);
+        
+        return onSnapshot(queryToUse, (snapshot: any) => {
+          console.log(`📊 ${strategyName} snapshot received:`, {
+            docCount: snapshot.docs.length,
+            fromCache: snapshot.metadata.fromCache,
+            hasPendingWrites: snapshot.metadata.hasPendingWrites
+          });
+
+          const comments: ShortFilmComment[] = [];
+
+          snapshot.docs.forEach((docSnap: any, index: number) => {
+            try {
+              const data = docSnap.data();
+              
+              console.log(`📄 Processing subscription document ${index + 1}:`, {
+                id: docSnap.id,
+                type: data.type,
+                hasScores: !!data.scores,
+                adminId: data.adminId,
+                adminName: data.adminName,
+                isDeleted: data.isDeleted,
+                rawScores: data.scores
+              });
+
+              // Manual filtering for unfiltered queries
+              if (strategyName === 'unfiltered' && data.isDeleted === true) {
+                console.log(`⏭️ Skipping deleted document in subscription: ${docSnap.id}`);
+                return;
+              }
+
+              // Validate required fields
+              if (!data.adminId || !data.adminName || !data.type) {
+                console.warn(`⚠️ Subscription document ${docSnap.id} missing required fields, skipping`);
+                return;
+              }
+
+              // Map database scores to application format with error handling
+              let mappedScores;
+              try {
+                mappedScores = this.mapDatabaseScoresToApp(data.scores);
+              } catch (mappingError) {
+                console.warn(`⚠️ Error mapping scores in subscription for document ${docSnap.id}:`, mappingError);
+                mappedScores = undefined;
+              }
+
+              const comment: ShortFilmComment = {
+                id: docSnap.id,
+                submissionId: data.submissionId || submissionId,
+                adminId: data.adminId,
+                adminName: data.adminName,
+                adminEmail: data.adminEmail || '',
+                content: data.content || '',
+                type: data.type,
+                scores: mappedScores,
+                metadata: data.metadata || {},
+                createdAt: data.createdAt?.toDate() || new Date(),
+                updatedAt: data.updatedAt?.toDate(),
+                isEdited: data.isEdited || false,
+                isDeleted: data.isDeleted || false
+              };
+
+              comments.push(comment);
+              
+            } catch (processingError) {
+              console.error(`❌ Error processing subscription document ${docSnap.id}:`, processingError);
+              // Continue processing other documents
+            }
+          });
+
+          // Sort if needed
+          if (strategyName === 'unfiltered' || strategyName === 'simple') {
+            comments.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+          }
+          
+          console.log(`✅ ${strategyName} subscription processed ${comments.length} comments`);
+          callback(comments);
+          
+        }, (error: any) => {
+          console.error(`❌ Error in ${strategyName} subscription:`, error);
+          console.error('❌ Error details:', {
+            code: error.code,
+            message: error.message,
+            name: error.name
+          });
+          
+          // Try fallback strategy if this one fails
+          if (strategyName === 'filtered') {
+            console.log('🔄 Filtered subscription failed, trying simple subscription...');
+            if (unsubscribe) unsubscribe();
+            
+            try {
+              const simpleQuery = query(commentsRef, where('isDeleted', '==', false));
+              unsubscribe = setupSubscription(simpleQuery, 'simple');
+            } catch (simpleError) {
+              console.log('🔄 Simple subscription failed, trying unfiltered subscription...');
+              unsubscribe = setupSubscription(commentsRef, 'unfiltered');
+            }
+          } else if (strategyName === 'simple') {
+            console.log('🔄 Simple subscription failed, trying unfiltered subscription...');
+            if (unsubscribe) unsubscribe();
+            unsubscribe = setupSubscription(commentsRef, 'unfiltered');
+          } else {
+            // All strategies failed, return empty array
+            console.error('❌ All subscription strategies failed');
+            callback([]);
+          }
+        });
+      };
+
+      // Start with filtered query
+      try {
+        const filteredQuery = query(
+          commentsRef,
+          where('isDeleted', '==', false),
+          orderBy('createdAt', 'desc')
+        );
+        unsubscribe = setupSubscription(filteredQuery, 'filtered');
+      } catch (queryError) {
+        console.warn('⚠️ Could not create filtered query, trying simple query:', queryError);
+        
+        try {
+          const simpleQuery = query(commentsRef, where('isDeleted', '==', false));
+          unsubscribe = setupSubscription(simpleQuery, 'simple');
+        } catch (simpleError) {
+          console.warn('⚠️ Could not create simple query, using unfiltered:', simpleError);
+          unsubscribe = setupSubscription(commentsRef, 'unfiltered');
+        }
+      }
+
+      return () => {
+        console.log('🧹 Cleaning up comments subscription');
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Fatal error setting up comments subscription:', error);
+      callback([]);
       return () => {};
     }
   }

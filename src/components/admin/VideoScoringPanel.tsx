@@ -20,11 +20,12 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
   const { user } = useAuth();
   const currentLanguage = i18n.language as 'en' | 'th';
 
-  const [scores, setScores] = useState<Partial<ScoringCriteria>>({
+  const [scores, setScores] = useState<Partial<ScoringCriteria & { humanEffort: number }>>({
     technical: 0,
     story: 0,
     creativity: 0,
     chiangmai: 0,
+    humanEffort: 0,
     overall: 0,
     comments: ''
   });
@@ -38,7 +39,8 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
         story: currentScores.story,
         creativity: currentScores.creativity,
         chiangmai: currentScores.chiangmai,
-        overall: currentScores.overall,
+        humanEffort: currentScores.overall, // Map from overall prop to humanEffort state
+        overall: currentScores.overall, // Keep overall for compatibility
         comments: currentScores.comments || ''
       });
     } else {
@@ -48,6 +50,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
         story: 0,
         creativity: 0,
         chiangmai: 0,
+        humanEffort: 0,
         overall: 0,
         comments: ''
       });
@@ -64,7 +67,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
       story: "เรื่องราวและการเล่าเรื่อง",
       creativity: "ความคิดสร้างสรรค์และความเป็นต้นฉบับ",
       chiangmai: "ความเกี่ยวข้องกับเชียงใหม่",
-      overall: "ความประทับใจโดยรวม",
+      humanEffort: "ความพยายามของมนุษย์",
       totalScore: "คะแนนรวม",
       comments: "ความคิดเห็นเพิ่มเติม",
       commentsPlaceholder: "เขียนความคิดเห็นเกี่ยวกับผลงานนี้...",
@@ -88,7 +91,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
       story: "Story & Narrative",
       creativity: "Creativity & Originality",
       chiangmai: "Connection to Chiang Mai",
-      overall: "Overall Impact",
+      humanEffort: "Human Effort",
       totalScore: "Total Score",
       comments: "Additional Comments",
       commentsPlaceholder: "Write your comments about this film...",
@@ -114,11 +117,11 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
     { key: 'technical', label: currentContent.technical, icon: '🎬' },
     { key: 'story', label: currentContent.story, icon: '📖' },
     { key: 'chiangmai', label: currentContent.chiangmai, icon: '🏔️' },
-    { key: 'overall', label: currentContent.overall, icon: '🤝' }
+    { key: 'humanEffort', label: currentContent.humanEffort, icon: '💪' }
   ];
 
   // Calculate total score
-  const totalScore = (scores.creativity || 0) + (scores.technical || 0) + (scores.story || 0) + (scores.chiangmai || 0) + (scores.overall || 0);
+  const totalScore = (scores.creativity || 0) + (scores.technical || 0) + (scores.story || 0) + (scores.chiangmai || 0) + (scores.humanEffort || 0);
   const totalPercentage = Math.round((totalScore / 50) * 100);
 
   // Calculate average from all scores
@@ -132,15 +135,41 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
       scores.story !== (currentScores?.story || 0) ||
       scores.creativity !== (currentScores?.creativity || 0) ||
       scores.chiangmai !== (currentScores?.chiangmai || 0) ||
-      scores.overall !== (currentScores?.overall || 0) ||
+      scores.humanEffort !== (currentScores?.overall || 0) ||
       scores.comments !== (currentScores?.comments || '');
     
     setHasChanges(hasScoreChanges);
-    onScoreChange(scores);
+    
+    // Update both humanEffort and overall to keep them in sync
+    const updatedScores = {
+      ...scores,
+      overall: scores.humanEffort || 0,
+      humanEffort: scores.humanEffort || 0
+    };
+    
+    // Map back to overall for parent component compatibility
+    const mappedScores = {
+      technical: updatedScores.technical || 0,
+      story: updatedScores.story || 0,
+      creativity: updatedScores.creativity || 0,
+      chiangmai: updatedScores.chiangmai || 0,
+      overall: updatedScores.humanEffort || 0, // Use humanEffort as overall
+      totalScore: (updatedScores.technical || 0) + (updatedScores.story || 0) + (updatedScores.creativity || 0) + (updatedScores.chiangmai || 0) + (updatedScores.humanEffort || 0),
+      comments: updatedScores.comments
+    };
+    
+    onScoreChange(mappedScores);
   }, [scores, currentScores, onScoreChange]);
 
   const handleScoreChange = (criterion: string, value: number) => {
-    setScores(prev => ({ ...prev, [criterion]: value }));
+    setScores(prev => {
+      const updated = { ...prev, [criterion]: value };
+      // Keep humanEffort and overall in sync
+      if (criterion === 'humanEffort') {
+        updated.overall = value;
+      }
+      return updated;
+    });
   };
 
   const handleCommentsChange = (comments: string) => {
@@ -155,7 +184,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
       story: scores.story || 0,
       creativity: scores.creativity || 0,
       chiangmai: scores.chiangmai || 0,
-      overall: scores.overall || 0,
+      overall: scores.humanEffort || 0, // Map humanEffort back to overall for interface compatibility
       totalScore,
       adminId: user.uid,
       adminName: user.displayName || user.email || 'Admin',
@@ -173,6 +202,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
       story: 0,
       creativity: 0,
       chiangmai: 0,
+      humanEffort: 0,
       overall: 0,
       comments: ''
     });
@@ -339,7 +369,7 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
                     {score.totalScore}/50
                   </p>
                   <p className={`${getClass('body')} text-white/60 text-xs`}>
-                    C:{score.creativity} T:{score.technical} S:{score.story} CM:{score.chiangmai} O:{score.overall}
+                    C:{score.creativity} T:{score.technical} S:{score.story} CM:{score.chiangmai} HE:{score.overall}
                   </p>
                 </div>
               </div>

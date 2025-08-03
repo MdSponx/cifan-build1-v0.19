@@ -13,6 +13,7 @@ import VideoScoringPanel from '../admin/VideoScoringPanel';
 import AdminControlsPanel from '../admin/AdminControlsPanel';
 import VideoSection from '../applications/VideoSection';
 import CompactFilmInfo from '../ui/CompactFilmInfo';
+import FirestoreCommentsDebugger from '../debug/FirestoreCommentsDebugger';
 import { 
   Eye, 
   Star, 
@@ -38,7 +39,8 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  MessageSquare
+  MessageSquare,
+  Bug
 } from 'lucide-react';
 
 interface AdminApplicationDetailPageProps {
@@ -106,6 +108,9 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
   const [juryData, setJuryData] = useState<any[]>([]);
   const [averageScoreFromComments, setAverageScoreFromComments] = useState<number>(0);
   const [currentUserScore, setCurrentUserScore] = useState<ShortFilmComment | null>(null);
+
+  // Debug state
+  const [showDebugger, setShowDebugger] = useState(false);
 
   const { showSuccess, showError } = useNotificationHelpers();
 
@@ -1192,36 +1197,45 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
                     <p>Jury data: {juryData.length}</p>
                     <p>Loading: {loadingComments ? 'true' : 'false'}</p>
                   </div>
-                  {/* Test Button */}
+                  {/* Debug Tools */}
                   {user && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          console.log('🧪 Creating test score...');
-                          await shortFilmCommentsService.addScoringComment(
-                            applicationId,
-                            user.uid,
-                            user.displayName || user.email || 'Test Admin',
-                            user.email || 'test@admin.com',
-                            {
-                              technical: 8,
-                              story: 7,
-                              creativity: 9,
-                              chiangmai: 6,
-                              overall: 8,
-                              totalScore: 38
-                            },
-                            'This is a test scoring comment to verify the system works correctly.'
-                          );
-                          console.log('✅ Test score created successfully');
-                        } catch (error) {
-                          console.error('❌ Error creating test score:', error);
-                        }
-                      }}
-                      className="mt-4 px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
-                    >
-                      🧪 Create Test Score (Debug)
-                    </button>
+                    <div className="mt-4 space-y-2">
+                      <button
+                        onClick={() => setShowDebugger(true)}
+                        className="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm flex items-center space-x-2"
+                      >
+                        <Bug className="w-4 h-4" />
+                        <span>🔍 Open Debug Tools</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            console.log('🧪 Creating test score...');
+                            await shortFilmCommentsService.addScoringComment(
+                              applicationId,
+                              user.uid,
+                              user.displayName || user.email || 'Test Admin',
+                              user.email || 'test@admin.com',
+                              {
+                                technical: 8,
+                                story: 7,
+                                creativity: 9,
+                                chiangmai: 6,
+                                overall: 8,
+                                totalScore: 38
+                              },
+                              'This is a test scoring comment to verify the system works correctly.'
+                            );
+                            console.log('✅ Test score created successfully');
+                          } catch (error) {
+                            console.error('❌ Error creating test score:', error);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
+                      >
+                        🧪 Create Test Score (Quick)
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1282,7 +1296,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
                         </div>
                         <div className="text-center">
                           <div className="text-white/60 text-xs mb-1">
-                            {currentLanguage === 'th' ? 'โดยรวม' : 'Overall'}
+                            {currentLanguage === 'th' ? 'ความพยายามของมนุษย์' : 'Human Effort'}
                           </div>
                           <div className="text-white font-bold">{jury.scores.overall}/10</div>
                         </div>
@@ -1806,6 +1820,14 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Debug Modal */}
+      {showDebugger && (
+        <FirestoreCommentsDebugger
+          submissionId={applicationId}
+          onClose={() => setShowDebugger(false)}
+        />
       )}
     </div>
   );

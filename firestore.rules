@@ -2,34 +2,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Profiles collection - users can read/write their own profile
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+        request.auth.uid != null &&
+        exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'super-admin');
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Profiles collection - users can read/write their own profile, admins can read all
     match /profiles/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId);
+      allow create: if request.auth != null && request.auth.uid == userId;
     }
     
     // Submissions collection
     match /submissions/{submissionId} {
-      // Users can create and read/update their own submissions
+      // Users can create submissions
       allow create: if request.auth != null;
-      allow read, update: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || 
-         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin');
       
-      // Admins can read/write all submissions
-      allow read, write: if request.auth != null && 
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+      // Users can read/update their own submissions, admins can read/update all
+      allow read: if request.auth != null && 
+        (isAdmin() || 
+         (exists(/databases/$(database)/documents/submissions/$(submissionId)) && 
+          request.auth.uid == resource.data.userId));
+      
+      allow update: if request.auth != null && 
+        (isAdmin() || 
+         (exists(/databases/$(database)/documents/submissions/$(submissionId)) && 
+          request.auth.uid == resource.data.userId));
+      
+      // Admins can delete submissions
+      allow delete: if isAdmin();
       
       // ShortFilmComments subcollection - only admins can read/write
       match /ShortFilmComments/{commentId} {
-        allow read, write: if request.auth != null && 
-          get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+        allow read, write, create, update, delete: if isAdmin();
       }
     }
     
     // Admin collection - only for admin users
     match /admin/{document=**} {
-      allow read, write: if request.auth != null && 
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+      allow read, write, create, update, delete: if isAdmin();
+    }
+    
+    // Admins collection - only for admin users  
+    match /admins/{adminId} {
+      allow read, write, create, update, delete: if isAdmin();
     }
     
     // Public collections (read-only for all users)

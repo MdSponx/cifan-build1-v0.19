@@ -246,7 +246,8 @@ export interface ScoringCriteria {
   story: number;         // 1-10
   creativity: number;    // 1-10
   chiangmai: number;     // 1-10
-  overall: number;       // 1-10
+  overall: number;       // 1-10 (maps to humanEffort in database)
+  humanEffort?: number;  // 1-10 (internal use, optional for compatibility)
   totalScore: number;    // calculated (0-50)
   adminId: string;
   adminName: string;
