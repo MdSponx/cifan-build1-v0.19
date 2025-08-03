@@ -12,9 +12,14 @@ import {
   XCircle, 
   Clock,
   AlertTriangle,
-  Save
+  Save,
+  Edit3,
+  Trash2,
+  X
 } from 'lucide-react';
 import AnimatedButton from '../ui/AnimatedButton';
+import { useAdminNotes } from '../../hooks/useAdminNotes';
+import { notesService } from '../../services/notesService';
 
 const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
   application,
@@ -29,10 +34,26 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
   const { getClass } = useTypography();
   const currentLanguage = i18n.language as 'en' | 'th';
 
-  const [notes, setNotes] = useState(application.adminNotes || '');
   const [showFlagDialog, setShowFlagDialog] = useState(false);
   const [flagReason, setFlagReason] = useState('');
-  const [hasNotesChanges, setHasNotesChanges] = useState(false);
+
+  // Real notes system state
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+
+  // Use the admin notes hook
+  const {
+    notes: adminNotes,
+    loading: notesLoading,
+    isCreating,
+    isUpdating: isUpdatingNote,
+    isDeleting,
+    createNote,
+    updateNote,
+    deleteNote,
+    canEditNote
+  } = useAdminNotes(application.id);
 
   const content = {
     th: {
@@ -43,17 +64,28 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
       statusManagement: "การจัดการสถานะ",
       currentStatus: "สถานะปัจจุบัน",
       changeStatus: "เปลี่ยนสถานะ",
-      pending: "รอการพิจารณา",
-      inProgress: "กำลังพิจารณา",
-      reviewed: "พิจารณาแล้ว",
-      approved: "อนุมัติ",
-      rejected: "ปฏิเสธ",
+      draft: "ร่าง",
+      submitted: "ส่งแล้ว",
+      underReview: "กำลังพิจารณา",
+      accepted: "ผ่าน",
+      rejected: "ไม่ผ่าน",
       
       // Admin notes
       adminNotes: "บันทึกผู้ดูแล",
       notesPlaceholder: "เขียนบันทึกส่วนตัวเกี่ยวกับใบสมัครนี้...",
       saveNotes: "บันทึกหมายเหตุ",
       saving: "กำลังบันทึก...",
+      
+      // New notes system
+      addNewNote: "เพิ่มบันทึกใหม่",
+      newNotePlaceholder: "เขียนบันทึกเกี่ยวกับใบสมัครนี้ เช่น เอกสารที่ขาดหายไป หรือปัญหาเรื่องอายุ...",
+      adminActivityLog: "บันทึกการทำงานของผู้ดูแล",
+      addNote: "เพิ่มบันทึก",
+      editNote: "แก้ไขบันทึก",
+      deleteNote: "ลบบันทึก",
+      confirmDelete: "คุณแน่ใจหรือไม่ที่จะลบบันทึกนี้?",
+      noNotes: "ยังไม่มีบันทึก",
+      edited: "แก้ไขแล้ว",
       
       // Flag system
       flagApplication: "ตั้งค่าสถานะพิเศษ",
@@ -82,10 +114,10 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
       statusManagement: "Status Management",
       currentStatus: "Current Status",
       changeStatus: "Change Status",
-      pending: "Pending",
-      inProgress: "In Progress",
-      reviewed: "Reviewed",
-      approved: "Approved",
+      draft: "Draft",
+      submitted: "Submitted",
+      underReview: "Under Review",
+      accepted: "Accepted",
       rejected: "Rejected",
       
       // Admin notes
@@ -93,6 +125,17 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
       notesPlaceholder: "Write private notes about this application...",
       saveNotes: "Save Notes",
       saving: "Saving...",
+      
+      // New notes system
+      addNewNote: "Add New Note",
+      newNotePlaceholder: "Write a note about this application, e.g., missing documents or age issues...",
+      adminActivityLog: "Admin Activity Log",
+      addNote: "Add Note",
+      editNote: "Edit Note",
+      deleteNote: "Delete Note",
+      confirmDelete: "Are you sure you want to delete this note?",
+      noNotes: "No notes yet",
+      edited: "edited",
       
       // Flag system
       flagApplication: "Flag Application",
@@ -118,24 +161,14 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
   const currentContent = content[currentLanguage];
 
   const statusOptions = [
-    { value: 'pending', label: currentContent.pending, icon: <Clock className="w-4 h-4" />, color: 'text-yellow-400' },
-    { value: 'in-progress', label: currentContent.inProgress, icon: <AlertTriangle className="w-4 h-4" />, color: 'text-blue-400' },
-    { value: 'reviewed', label: currentContent.reviewed, icon: <Shield className="w-4 h-4" />, color: 'text-purple-400' },
-    { value: 'approved', label: currentContent.approved, icon: <CheckCircle className="w-4 h-4" />, color: 'text-green-400' },
+    { value: 'draft', label: currentContent.draft, icon: <Clock className="w-4 h-4" />, color: 'text-yellow-400' },
+    { value: 'submitted', label: currentContent.submitted, icon: <AlertTriangle className="w-4 h-4" />, color: 'text-blue-400' },
+    { value: 'under-review', label: currentContent.underReview, icon: <Shield className="w-4 h-4" />, color: 'text-purple-400' },
+    { value: 'accepted', label: currentContent.accepted, icon: <CheckCircle className="w-4 h-4" />, color: 'text-green-400' },
     { value: 'rejected', label: currentContent.rejected, icon: <XCircle className="w-4 h-4" />, color: 'text-red-400' }
   ];
 
   const currentStatusOption = statusOptions.find(option => option.value === application.reviewStatus);
-
-  const handleNotesChange = (value: string) => {
-    setNotes(value);
-    setHasNotesChanges(value !== application.adminNotes);
-  };
-
-  const handleSaveNotes = async () => {
-    await onNotesChange(notes);
-    setHasNotesChanges(false);
-  };
 
   const handleStatusChange = async (newStatus: AdminApplicationData['reviewStatus']) => {
     const confirmed = window.confirm(currentContent.confirmStatusChange);
@@ -161,6 +194,49 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
     await onFlagToggle(true, flagReason);
     setShowFlagDialog(false);
     setFlagReason('');
+  };
+
+  // Real notes system handlers
+  const handleCreateNote = async () => {
+    if (!newNoteContent.trim()) return;
+    try {
+      await createNote(newNoteContent);
+      setNewNoteContent('');
+    } catch (error) {
+      console.error('Failed to create note:', error);
+    }
+  };
+
+  const handleStartEdit = (noteId: string, content: string) => {
+    setEditingNoteId(noteId);
+    setEditingContent(content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingNoteId || !editingContent.trim()) return;
+    try {
+      await updateNote(editingNoteId, editingContent);
+      setEditingNoteId(null);
+      setEditingContent('');
+    } catch (error) {
+      console.error('Failed to update note:', error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNoteId(null);
+    setEditingContent('');
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    const confirmed = window.confirm(currentContent.confirmDelete);
+    if (confirmed) {
+      try {
+        await deleteNote(noteId);
+      } catch (error) {
+        console.error('Failed to delete note:', error);
+      }
+    }
   };
 
   return (
@@ -223,7 +299,12 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
               </h5>
               <select
                 value={application.reviewStatus}
-                onChange={(e) => handleStatusChange(e.target.value as AdminApplicationData['reviewStatus'])}
+                onChange={(e) => {
+                  const newStatus = e.target.value as AdminApplicationData['reviewStatus'];
+                  if (newStatus !== application.reviewStatus) {
+                    handleStatusChange(newStatus);
+                  }
+                }}
                 disabled={isUpdating}
                 className="w-full p-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-[#FCB283] focus:outline-none"
               >
@@ -244,123 +325,119 @@ const AdminControlsPanel: React.FC<AdminControlsPanelProps> = ({
             <span>{currentContent.adminNotes}</span>
           </h4>
           
-          {/* Add New Note - Moved to Top */}
-          <div className="space-y-4 mb-6">
-            <h5 className={`${getClass('body')} text-white/80 mb-3 text-sm`}>
-              {currentLanguage === 'th' ? 'เพิ่มบันทึกใหม่' : 'Add New Note'}
-            </h5>
-            <textarea
-              value={notes}
-              onChange={(e) => handleNotesChange(e.target.value)}
-              placeholder={currentContent.notesPlaceholder}
-              rows={4}
-              className="w-full p-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none resize-vertical"
-            />
-            
-            {hasNotesChanges && (
-              <div className="flex justify-end">
-                <AnimatedButton
-                  variant="primary"
-                  size="small"
-                  icon="💾"
-                  onClick={handleSaveNotes}
-                  className={isUpdating ? 'opacity-50 cursor-not-allowed' : ''}
-                >
-                  {isUpdating ? currentContent.saving : currentContent.saveNotes}
-                </AnimatedButton>
-              </div>
-            )}
-          </div>
-
-          {/* Notes History/Log - Mock Data for UI Preview */}
+          {/* Real Notes System - Replace Mock Data */}
           <div className="mb-6">
             <h5 className={`${getClass('body')} text-white/80 mb-3 text-sm`}>
-              {currentLanguage === 'th' ? 'บันทึกการทำงานของผู้ดูแล' : 'Admin Activity Log'}
+              {currentContent.adminActivityLog}
             </h5>
+            
+            {/* Add New Note Form */}
+            <div className="mb-4 glass-card p-4 rounded-xl">
+              <textarea
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                placeholder={currentContent.newNotePlaceholder}
+                rows={3}
+                className="w-full p-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none resize-vertical"
+              />
+              {newNoteContent.trim() && (
+                <div className="flex justify-end mt-3">
+                  <AnimatedButton
+                    variant="primary"
+                    size="small"
+                    onClick={isCreating ? undefined : handleCreateNote}
+                    className={isCreating ? 'opacity-50 cursor-not-allowed' : ''}
+                  >
+                    {isCreating ? currentContent.saving : currentContent.addNote}
+                  </AnimatedButton>
+                </div>
+              )}
+            </div>
+
+            {/* Notes List */}
             <div className="space-y-3">
-              {/* Mock Note 1 */}
-              <div className="glass-card p-4 rounded-xl border-l-4 border-blue-400">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-xs">
-                      JD
-                    </div>
-                    <div>
-                      <p className={`${getClass('body')} text-white font-medium text-sm`}>
-                        {currentLanguage === 'th' ? 'จอห์น โดว์' : 'John Doe'}
-                      </p>
-                      <p className={`text-xs ${getClass('body')} text-white/60`}>
-                        {currentLanguage === 'th' ? 'ผู้ดูแลระบบหลัก' : 'Senior Admin'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-xs ${getClass('body')} text-white/60`}>
-                    {currentLanguage === 'th' ? '2 ชั่วโมงที่แล้ว' : '2 hours ago'}
-                  </span>
+              {notesLoading ? (
+                <div className="glass-card p-4 rounded-xl">
+                  <p className="text-white/60 text-center">Loading notes...</p>
                 </div>
-                <p className={`${getClass('body')} text-white/90 text-sm leading-relaxed`}>
-                  {currentLanguage === 'th' 
-                    ? 'ได้ตรวจสอบเอกสารหลักฐานแล้ว ทุกอย่างครบถ้วนและถูกต้อง พร้อมส่งต่อให้คณะกรรมการตัดสินแล้ว'
-                    : 'Reviewed all documentation. Everything is complete and accurate. Ready to forward to the judging panel.'
-                  }
-                </p>
-              </div>
-
-              {/* Mock Note 2 */}
-              <div className="glass-card p-4 rounded-xl border-l-4 border-green-400">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-white font-bold text-xs">
-                      MS
-                    </div>
-                    <div>
-                      <p className={`${getClass('body')} text-white font-medium text-sm`}>
-                        {currentLanguage === 'th' ? 'มารี สมิธ' : 'Marie Smith'}
-                      </p>
-                      <p className={`text-xs ${getClass('body')} text-white/60`}>
-                        {currentLanguage === 'th' ? 'ผู้ประสานงาน' : 'Coordinator'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className={`text-xs ${getClass('body')} text-white/60`}>
-                    {currentLanguage === 'th' ? '1 วันที่แล้ว' : '1 day ago'}
-                  </span>
+              ) : adminNotes.length === 0 ? (
+                <div className="glass-card p-4 rounded-xl">
+                  <p className="text-white/60 text-center">{currentContent.noNotes}</p>
                 </div>
-                <p className={`${getClass('body')} text-white/90 text-sm leading-relaxed`}>
-                  {currentLanguage === 'th' 
-                    ? 'ติดต่อผู้สมัครเพื่อขอเอกสารเพิ่มเติมแล้ว คาดว่าจะได้รับภายใน 2-3 วันทำการ'
-                    : 'Contacted applicant for additional documentation. Expected to receive within 2-3 business days.'
-                  }
-                </p>
-              </div>
-
-              {/* Mock Note 3 */}
-              <div className="glass-card p-4 rounded-xl border-l-4 border-purple-400">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs">
-                      RJ
+              ) : (
+                adminNotes.map((note) => (
+                  <div key={note.id} className="glass-card p-4 rounded-xl border-l-4 border-blue-400">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${notesService.getAdminAvatarColor(note.adminId)} flex items-center justify-center text-white font-bold text-xs`}>
+                          {notesService.getAdminInitials(note.adminName)}
+                        </div>
+                        <div>
+                          <p className={`${getClass('body')} text-white font-medium text-sm`}>
+                            {note.adminName}
+                          </p>
+                          <p className={`text-xs ${getClass('body')} text-white/60`}>
+                            {note.adminRole || 'Admin'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs ${getClass('body')} text-white/60`}>
+                          {notesService.formatRelativeTime(note.createdAt, currentLanguage)}
+                          {note.isEdited && ` • ${currentContent.edited}`}
+                        </span>
+                        {canEditNote(note) && (
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => handleStartEdit(note.id, note.content)}
+                              className="p-1 text-white/60 hover:text-white transition-colors"
+                              title={currentContent.editNote}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={isDeleting ? undefined : () => handleDeleteNote(note.id)}
+                              className={`p-1 text-white/60 hover:text-red-400 transition-colors ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title={currentContent.deleteNote}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className={`${getClass('body')} text-white font-medium text-sm`}>
-                        {currentLanguage === 'th' ? 'โรเบิร์ต จอห์นสัน' : 'Robert Johnson'}
+                    
+                    {editingNoteId === note.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={editingContent}
+                          onChange={(e) => setEditingContent(e.target.value)}
+                          rows={3}
+                          className="w-full p-2 bg-white/5 border border-white/10 rounded text-white text-sm resize-vertical"
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-2 py-1 text-xs text-white/60 hover:text-white transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={isUpdatingNote ? undefined : handleSaveEdit}
+                            className={`px-2 py-1 text-xs text-green-400 hover:text-green-300 transition-colors ${isUpdatingNote ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <Save className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={`${getClass('body')} text-white/90 text-sm leading-relaxed`}>
+                        {note.content}
                       </p>
-                      <p className={`text-xs ${getClass('body')} text-white/60`}>
-                        {currentLanguage === 'th' ? 'ผู้ตรวจสอบเทคนิค' : 'Technical Reviewer'}
-                      </p>
-                    </div>
+                    )}
                   </div>
-                  <span className={`text-xs ${getClass('body')} text-white/60`}>
-                    {currentLanguage === 'th' ? '3 วันที่แล้ว' : '3 days ago'}
-                  </span>
-                </div>
-                <p className={`${getClass('body')} text-white/90 text-sm leading-relaxed`}>
-                  {currentLanguage === 'th' 
-                    ? 'ตรวจสอบคุณภาพไฟล์วิดีโอแล้ว ความละเอียดและรูปแบบไฟล์เป็นไปตามข้อกำหนด ไม่พบปัญหาด้านเทคนิค'
-                    : 'Video file quality check completed. Resolution and format meet requirements. No technical issues found.'
-                  }
-                </p>
-              </div>
+                ))
+              )}
             </div>
           </div>
         </div>

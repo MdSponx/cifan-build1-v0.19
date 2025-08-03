@@ -244,7 +244,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
           // Admin-specific data
           scores: data.scores || [],
           adminNotes: data.adminNotes || '',
-          reviewStatus: data.reviewStatus || 'pending',
+          reviewStatus: data.reviewStatus || 'draft',
           flagged: data.flagged || false,
           flagReason: data.flagReason,
           assignedReviewers: data.assignedReviewers || [],
@@ -774,7 +774,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
     setCurrentScores(scores);
   };
 
-  // Function to refresh comments data after saving
+  // Enhanced function to refresh comments data after saving
   const refreshCommentsData = async () => {
     console.log('🔄 Refreshing comments data...');
     try {
@@ -782,6 +782,13 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
       console.log('📨 Refreshed comments:', refreshedComments.length);
       
       setComments(refreshedComments);
+      
+      // Filter only active scoring comments
+      const activeScoringComments = refreshedComments.filter(comment => 
+        comment.type === 'scoring' && 
+        comment.scores && 
+        !comment.isDeleted
+      );
       
       // Convert data for Jury Comments section
       const juryComments = convertCommentsToJuryData(refreshedComments);
@@ -793,9 +800,26 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
       console.log('📊 Calculated average score after refresh:', avgScore);
       setAverageScoreFromComments(avgScore);
       
-      // Get current user's score
-      const userScore = getCurrentUserScore(refreshedComments, user!.uid);
-      console.log('👤 Current user score after refresh:', userScore ? 'found' : 'not found');
+      // Find latest scoring comment for current user
+      const userScoringComments = activeScoringComments.filter(comment => 
+        comment.adminId === user!.uid
+      );
+      
+      let userScore = null;
+      if (userScoringComments.length > 0) {
+        // Sort by createdAt and get the latest
+        userScore = userScoringComments.sort((a, b) => {
+          const timeA = a.createdAt?.getTime() || 0;
+          const timeB = b.createdAt?.getTime() || 0;
+          return timeB - timeA; // Latest first
+        })[0];
+      }
+      
+      console.log('👤 Current user score after refresh:', userScore ? {
+        id: userScore.id,
+        totalScore: userScore.scores?.totalScore,
+        createdAt: userScore.createdAt
+      } : 'not found');
       setCurrentUserScore(userScore);
       
       console.log('✅ Comments data refreshed successfully');
@@ -805,7 +829,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
   };
 
   const handleSaveScore = async (scores: ScoringCriteria) => {
-    console.log('🚀 Enhanced handleSaveScore called with:', scores);
+    console.log('🚀 FIXED handleSaveScore called with:', scores);
     
     setIsSubmittingScore(true);
     
@@ -825,110 +849,54 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
       }
 
       console.log('✅ Validation passed');
-      console.log('🔄 Starting save process...');
+      console.log('🔄 Starting FIXED save process...');
       console.log('👤 User:', { uid: user.uid, name: user.displayName, email: user.email });
       console.log('💾 Saving score data:', scores);
 
-      let operationSuccess = false;
-
-      // Step 1: Save to comments service with enhanced error handling
-      try {
-        // First, check if user already has a scoring comment by querying the service
-        console.log('🔍 Checking if user already has a scoring comment...');
-        console.log('🔍 User ID to check:', user.uid);
-        console.log('🔍 Application ID:', applicationId);
-        
-        let existingUserScore: any = null;
-        
-        try {
-          existingUserScore = await shortFilmCommentsService.getLatestScoreByAdmin(applicationId, user.uid);
-          console.log('📋 Existing user score check result:', existingUserScore ? {
-            id: existingUserScore.id,
-            adminId: existingUserScore.adminId,
-            adminName: existingUserScore.adminName,
-            totalScore: existingUserScore.scores?.totalScore,
-            isDeleted: existingUserScore.isDeleted
-          } : 'No existing score found');
-        } catch (checkError) {
-          console.warn('⚠️ Error checking existing score, will create new one:', checkError);
-          existingUserScore = null;
+      // FIXED: Enhanced logic for deciding update vs create
+      let shouldUpdate = false;
+      let existingCommentId = null;
+      
+      // Step 1: Use currentUserScore from UI state as primary source (more reliable)
+      if (currentUserScore && currentUserScore.id && !currentUserScore.isDeleted) {
+        if (currentUserScore.adminId === user.uid) {
+          shouldUpdate = true;
+          existingCommentId = currentUserScore.id;
+          console.log('✅ Using UI state - will UPDATE existing score:', {
+            id: existingCommentId,
+            adminId: currentUserScore.adminId,
+            totalScore: currentUserScore.scores?.totalScore
+          });
         }
-        
-        // Double-check: also look at the currentUserScore from the UI state
-        console.log('🔍 Also checking currentUserScore from UI state:', currentUserScore ? {
-          id: currentUserScore.id,
-          adminId: currentUserScore.adminId,
-          totalScore: currentUserScore.scores?.totalScore
-        } : 'No currentUserScore in UI state');
-        
-        // Use the most reliable source - prefer the fresh query result
-        const scoreToUpdate = existingUserScore || currentUserScore;
-        
-        if (scoreToUpdate && scoreToUpdate.id && !scoreToUpdate.isDeleted) {
-          console.log('📝 Updating existing score...');
-          console.log('📝 Score to update ID:', scoreToUpdate.id);
-          console.log('📝 Score admin ID:', scoreToUpdate.adminId);
-          console.log('📝 Current user ID:', user.uid);
-          
-          // Verify this score belongs to the current user
-          if (scoreToUpdate.adminId !== user.uid) {
-            console.warn('⚠️ Score admin ID does not match current user, creating new score instead');
-            throw new Error('Score ownership mismatch');
-          }
-          
-          try {
-            await shortFilmCommentsService.updateScoringComment(
-              applicationId,
-              scoreToUpdate.id,
-              {
-                technical: scores.technical,
-                story: scores.story,
-                creativity: scores.creativity,
-                chiangmai: scores.chiangmai,
-                overall: scores.overall,
-                totalScore: scores.totalScore
-              },
-              scores.comments || '',
-              user.uid
-            );
-            console.log('✅ Score updated in comments service');
-          } catch (updateError) {
-            console.warn('⚠️ Update failed, trying to create new score instead:', updateError);
-            
-            // If update fails (e.g., comment was deleted), create a new one
-            const commentId = await shortFilmCommentsService.addScoringComment(
-              applicationId,
-              user.uid,
-              user.displayName || user.email || 'Admin',
-              user.email || '',
-              {
-                technical: scores.technical,
-                story: scores.story,
-                creativity: scores.creativity,
-                chiangmai: scores.chiangmai,
-                overall: scores.overall,
-                totalScore: scores.totalScore
-              },
-              scores.comments
-            );
-            console.log('✅ New score created after update failure with ID:', commentId);
-          }
-        } else {
-          console.log('➕ Creating new score (no existing valid score found)...');
-          console.log('📝 Reason: scoreToUpdate =', scoreToUpdate ? 'exists but invalid' : 'null');
-          if (scoreToUpdate) {
-            console.log('📝 Score details:', {
-              hasId: !!scoreToUpdate.id,
-              isDeleted: scoreToUpdate.isDeleted,
-              adminId: scoreToUpdate.adminId
+      }
+      
+      // Step 2: Backup check via API only if needed
+      if (!shouldUpdate) {
+        console.log('🔍 UI state not available, checking via API...');
+        try {
+          const apiExistingScore = await shortFilmCommentsService.getLatestScoreByAdmin(applicationId, user.uid);
+          if (apiExistingScore && apiExistingScore.id && !apiExistingScore.isDeleted) {
+            shouldUpdate = true;
+            existingCommentId = apiExistingScore.id;
+            console.log('✅ API check found existing score - will UPDATE:', {
+              id: existingCommentId,
+              adminId: apiExistingScore.adminId,
+              totalScore: apiExistingScore.scores?.totalScore
             });
           }
-          
-          const commentId = await shortFilmCommentsService.addScoringComment(
+        } catch (checkError) {
+          console.warn('⚠️ API check failed, will create new score:', checkError);
+        }
+      }
+      
+      // Step 3: Execute update or create based on decision
+      if (shouldUpdate && existingCommentId) {
+        console.log('📝 UPDATING existing score with ID:', existingCommentId);
+        
+        try {
+          await shortFilmCommentsService.updateScoringComment(
             applicationId,
-            user.uid,
-            user.displayName || user.email || 'Admin',
-            user.email || '',
+            existingCommentId,
             {
               technical: scores.technical,
               story: scores.story,
@@ -937,19 +905,50 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
               overall: scores.overall,
               totalScore: scores.totalScore
             },
-            scores.comments
+            scores.comments || '',
+            user.uid
           );
-          console.log('✅ New score created with ID:', commentId);
+          console.log('✅ Score UPDATED successfully');
+          
+        } catch (updateError) {
+          console.warn('⚠️ Update failed, checking if comment was deleted:', updateError);
+          
+          // FIXED: Only fallback if comment was actually deleted
+          if ((updateError as any)?.message?.includes('Comment not found') || 
+              (updateError as any)?.code === 'not-found') {
+            console.log('🔄 Comment was deleted, creating new one...');
+            shouldUpdate = false;
+          } else {
+            // Other errors should not fallback
+            console.error('❌ Update failed with non-deletion error:', updateError);
+            throw updateError;
+          }
         }
+      }
+      
+      // Step 4: Create new score if update wasn't successful or wasn't needed
+      if (!shouldUpdate) {
+        console.log('➕ CREATING new score...');
         
-        operationSuccess = true;
-        
-      } catch (commentsError) {
-        console.error('❌ Comments service error:', commentsError);
-        throw new Error(`Failed to save to comments service: ${(commentsError as any)?.message || 'Unknown error'}`);
+        const commentId = await shortFilmCommentsService.addScoringComment(
+          applicationId,
+          user.uid,
+          user.displayName || user.email || 'Admin',
+          user.email || '',
+          {
+            technical: scores.technical,
+            story: scores.story,
+            creativity: scores.creativity,
+            chiangmai: scores.chiangmai,
+            overall: scores.overall,
+            totalScore: scores.totalScore
+          },
+          scores.comments
+        );
+        console.log('✅ New score CREATED with ID:', commentId);
       }
 
-      // Step 2: Update submissions document with enhanced error handling
+      // Step 5: Update submissions document (legacy support)
       try {
         console.log('📄 Updating submissions document...');
         const docRef = doc(db, 'submissions', applicationId);
@@ -986,7 +985,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
         // Don't throw error here - the score was still saved to comments
       }
 
-      // Step 3: Refresh data
+      // Step 6: Refresh data
       try {
         console.log('🔄 Refreshing comments data after save...');
         await refreshCommentsData();
@@ -996,16 +995,16 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
         // Don't throw error - save was successful
       }
 
-      // Show success message
-      const successMessage = currentUserScore 
+      // Step 7: Show appropriate success message
+      const successMessage = shouldUpdate 
         ? (currentLanguage === 'th' ? 'อัปเดตคะแนนเรียบร้อย' : 'Score updated successfully')
         : (currentLanguage === 'th' ? 'บันทึกคะแนนเรียบร้อย' : 'Score saved successfully');
         
       showSuccess(successMessage);
-      console.log('✅ Save operation completed successfully');
+      console.log('✅ FIXED save operation completed successfully');
 
     } catch (error) {
-      console.error('❌ Error saving scores:', error);
+      console.error('❌ Error in FIXED save scores:', error);
       
       // Enhanced error reporting
       let errorMessage = currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการบันทึก: ' : 'Error saving scores: ';
@@ -1337,10 +1336,10 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
         </div>
 
         {/* Main Content - Auto-expanding grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 items-start">
           
-          {/* Left Section - Video & Comments (3/5 width) */}
-          <div className="xl:col-span-3 space-y-6">
+          {/* Left Section - Video & Comments (57% width) */}
+          <div className="lg:col-span-4 space-y-6">
             
             {/* Video Player */}
             <div className="relative bg-black rounded-xl overflow-hidden">
@@ -1420,46 +1419,6 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
                     <p>Jury data: {juryData.length}</p>
                     <p>Loading: {loadingComments ? 'true' : 'false'}</p>
                   </div>
-                  {/* Debug Tools */}
-                  {user && (
-                    <div className="mt-4 space-y-2">
-                      <button
-                        onClick={() => setShowDebugger(true)}
-                        className="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm flex items-center space-x-2"
-                      >
-                        <Bug className="w-4 h-4" />
-                        <span>🔍 Open Debug Tools</span>
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            console.log('🧪 Creating test score...');
-                            await shortFilmCommentsService.addScoringComment(
-                              applicationId,
-                              user.uid,
-                              user.displayName || user.email || 'Test Admin',
-                              user.email || 'test@admin.com',
-                              {
-                                technical: 8,
-                                story: 7,
-                                creativity: 9,
-                                chiangmai: 6,
-                                overall: 8,
-                                totalScore: 38
-                              },
-                              'This is a test scoring comment to verify the system works correctly.'
-                            );
-                            console.log('✅ Test score created successfully');
-                          } catch (error) {
-                            console.error('❌ Error creating test score:', error);
-                          }
-                        }}
-                        className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors text-sm"
-                      >
-                        🧪 Create Test Score (Quick)
-                      </button>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1538,41 +1497,43 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
             </div>
           </div>
 
-          {/* Right Section - Scoring Panel (2/5 width) */}
-          <div className="xl:col-span-2">
-            <VideoScoringPanel
-              applicationId={application.id}
-              currentScores={currentUserScore ? {
-                technical: currentUserScore.scores!.technical,
-                story: currentUserScore.scores!.story,
-                creativity: currentUserScore.scores!.creativity,
-                chiangmai: currentUserScore.scores!.chiangmai,
-                overall: currentUserScore.scores!.overall,
-                totalScore: currentUserScore.scores!.totalScore,
-                adminId: currentUserScore.adminId,
-                adminName: currentUserScore.adminName,
-                scoredAt: currentUserScore.createdAt,
-                comments: currentUserScore.content
-              } : undefined}
-              allScores={juryData.map(jury => ({
-                technical: jury.scores.technical,
-                story: jury.scores.story,
-                creativity: jury.scores.creativity,
-                chiangmai: jury.scores.chiangmai,
-                overall: jury.scores.overall,
-                totalScore: jury.scores.totalScore,
-                adminId: jury.id,
-                adminName: jury.judgeName,
-                scoredAt: jury.submittedAt,
-                comments: jury.comments
-              }))}
-              onScoreChange={(scores) => {
-                console.log('Score changed:', scores);
-              }}
-              onSaveScores={handleSaveScore}
-              isSubmitting={isSubmittingScore}
-              className="scoring-panel-full-height"
-            />
+          {/* Right Section - Scoring Panel (43% width) */}
+          <div className="lg:col-span-3">
+            <div className="max-w-sm mx-auto">
+              <VideoScoringPanel
+                applicationId={application.id}
+                currentScores={currentUserScore ? {
+                  technical: currentUserScore.scores!.technical,
+                  story: currentUserScore.scores!.story,
+                  creativity: currentUserScore.scores!.creativity,
+                  chiangmai: currentUserScore.scores!.chiangmai,
+                  overall: currentUserScore.scores!.overall,
+                  totalScore: currentUserScore.scores!.totalScore,
+                  adminId: currentUserScore.adminId,
+                  adminName: currentUserScore.adminName,
+                  scoredAt: currentUserScore.createdAt,
+                  comments: currentUserScore.content
+                } : undefined}
+                allScores={juryData.map(jury => ({
+                  technical: jury.scores.technical,
+                  story: jury.scores.story,
+                  creativity: jury.scores.creativity,
+                  chiangmai: jury.scores.chiangmai,
+                  overall: jury.scores.overall,
+                  totalScore: jury.scores.totalScore,
+                  adminId: jury.id,
+                  adminName: jury.judgeName,
+                  scoredAt: jury.submittedAt,
+                  comments: jury.comments
+                }))}
+                onScoreChange={(scores) => {
+                  console.log('Score changed:', scores);
+                }}
+                onSaveScores={handleSaveScore}
+                isSubmitting={isSubmittingScore}
+                className="scoring-panel-full-height"
+              />
+            </div>
           </div>
         </div>
       </div>

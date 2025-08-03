@@ -349,7 +349,53 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
     return 'text-red-400';
   };
 
-  const renderScoreSlider = (key: string, label: string, icon: string) => (
+  // Star Rating Component
+  const StarRating: React.FC<{
+    value: number;
+    onChange: (value: number) => void;
+    maxStars?: number;
+    size?: 'sm' | 'md' | 'lg';
+  }> = ({ value, onChange, maxStars = 10, size = 'md' }) => {
+    const [hoverValue, setHoverValue] = useState<number | null>(null);
+    
+    const sizeClasses = {
+      sm: 'w-4 h-4',
+      md: 'w-5 h-5',
+      lg: 'w-6 h-6'
+    };
+    
+    const starSize = sizeClasses[size];
+    
+    return (
+      <div className="flex items-center space-x-1">
+        {Array.from({ length: maxStars }, (_, index) => {
+          const starValue = index + 1;
+          const isActive = starValue <= (hoverValue ?? value);
+          
+          return (
+            <button
+              key={index}
+              type="button"
+              onClick={() => onChange(starValue)}
+              onMouseEnter={() => setHoverValue(starValue)}
+              onMouseLeave={() => setHoverValue(null)}
+              className={`transition-all duration-200 hover:scale-110 ${
+                isActive 
+                  ? 'text-[#FCB283] drop-shadow-lg' 
+                  : 'text-white/30 hover:text-white/50'
+              }`}
+            >
+              <Star 
+                className={`${starSize} ${isActive ? 'fill-current' : ''}`}
+              />
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderStarRating = (key: string, label: string, icon: string) => (
     <div key={key} className="space-y-3">
       <div className="flex items-center justify-between">
         <label className={`${getClass('body')} text-white/90 flex items-center space-x-2`}>
@@ -361,23 +407,14 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
         </span>
       </div>
       
-      <div className="relative">
-        <input
-          type="range"
-          min="0"
-          max="10"
+      {/* Star Rating */}
+      <div className="flex items-center justify-center">
+        <StarRating
           value={Number(scores[key as keyof typeof scores]) || 0}
-          onChange={(e) => handleScoreChange(key, parseInt(e.target.value))}
-          className="w-full h-3 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
-          style={{
-            background: `linear-gradient(to right, #FCB283 0%, #FCB283 ${((Number(scores[key as keyof typeof scores]) || 0) / 10) * 100}%, rgba(255,255,255,0.1) ${((Number(scores[key as keyof typeof scores]) || 0) / 10) * 100}%, rgba(255,255,255,0.1) 100%)`
-          }}
+          onChange={(value) => handleScoreChange(key, value)}
+          maxStars={10}
+          size="md"
         />
-        <div className="flex justify-between text-xs text-white/50 mt-1">
-          <span>0</span>
-          <span>5</span>
-          <span>10</span>
-        </div>
       </div>
     </div>
   );
@@ -394,10 +431,10 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
         </p>
       </div>
 
-      {/* Score Sliders */}
+      {/* Star Rating Scores */}
       <div className="space-y-6">
         {criteriaInfo.map(criterion => 
-          renderScoreSlider(criterion.key, criterion.label, criterion.icon)
+          renderStarRating(criterion.key, criterion.label, criterion.icon)
         )}
       </div>
 
@@ -413,19 +450,6 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
           className={`w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#FCB283] focus:border-transparent ${getClass('body')} resize-none`}
           rows={4}
         />
-      </div>
-
-      {/* Total Score Display */}
-      <div className="text-center p-4 bg-white/5 rounded-lg">
-        <p className={`${getClass('body')} text-white/70 mb-1`}>
-          {currentContent.totalScore}
-        </p>
-        <p className={`text-3xl ${getClass('header')} ${getScoreColor(totalPercentage / 100)} font-bold`}>
-          {totalScore}/50
-        </p>
-        <p className={`${getClass('menu')} text-white/60 text-sm`}>
-          ({totalPercentage}%)
-        </p>
       </div>
 
       {/* Action Buttons */}
@@ -458,20 +482,6 @@ const VideoScoringPanel: React.FC<VideoScoringPanelProps> = ({
           </span>
         </button>
       </div>
-
-      {/* Enhanced Debug Info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4 p-3 bg-black/20 rounded-lg text-xs text-white/60">
-          <p>🐛 Debug Info:</p>
-          <p>hasChanges: {hasChanges.toString()}</p>
-          <p>isSubmitting (prop): {isSubmitting.toString()}</p>
-          <p>localIsSubmitting: {localIsSubmitting.toString()}</p>
-          <p>currentScores exists: {!!currentScores}</p>
-          <p>totalScore: {totalScore}</p>
-          <p>user: {user?.uid || 'none'}</p>
-          <p>applicationId: {applicationId}</p>
-        </div>
-      )}
     </div>
   );
 };

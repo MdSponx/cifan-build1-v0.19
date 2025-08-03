@@ -839,6 +839,9 @@ class ShortFilmCommentsService {
 
       const editHistory = currentData?.editHistory || [];
       
+      // Create edit history entry with current timestamp (not serverTimestamp)
+      const currentTime = new Date();
+      
       const updateData = {
         content,
         scores: dbScores,
@@ -847,7 +850,7 @@ class ShortFilmCommentsService {
         editHistory: [
           ...editHistory,
           {
-            editedAt: serverTimestamp(),
+            editedAt: currentTime, // Use regular Date instead of serverTimestamp
             previousContent: currentData?.content || '',
             previousScores: currentData?.scores || {},
             editedBy
@@ -894,6 +897,86 @@ class ShortFilmCommentsService {
       } else {
         throw new Error(`Failed to update scoring comment: ${(error as any).message || 'Unknown error'}`);
       }
+    }
+  }
+
+  /**
+   * Check existing score with detailed validation - Enhanced method for decision making
+   */
+  async checkExistingScore(submissionId: string, adminId: string): Promise<{
+    exists: boolean;
+    comment: ShortFilmComment | null;
+    shouldUpdate: boolean;
+    reason: string;
+  }> {
+    try {
+      console.log('🔍 Checking existing score with validation:', { submissionId, adminId });
+      
+      // Get the latest score by this admin
+      const existingScore = await this.getLatestScoreByAdmin(submissionId, adminId);
+      
+      if (!existingScore) {
+        return {
+          exists: false,
+          comment: null,
+          shouldUpdate: false,
+          reason: 'No existing score found'
+        };
+      }
+      
+      // Validate the existing score
+      if (existingScore.isDeleted) {
+        return {
+          exists: true,
+          comment: existingScore,
+          shouldUpdate: false,
+          reason: 'Existing score is deleted'
+        };
+      }
+      
+      if (existingScore.adminId !== adminId) {
+        return {
+          exists: true,
+          comment: existingScore,
+          shouldUpdate: false,
+          reason: 'Score belongs to different admin'
+        };
+      }
+      
+      if (existingScore.type !== 'scoring') {
+        return {
+          exists: true,
+          comment: existingScore,
+          shouldUpdate: false,
+          reason: 'Comment is not a scoring type'
+        };
+      }
+      
+      if (!existingScore.scores) {
+        return {
+          exists: true,
+          comment: existingScore,
+          shouldUpdate: false,
+          reason: 'Comment has no scores data'
+        };
+      }
+      
+      // All validations passed
+      return {
+        exists: true,
+        comment: existingScore,
+        shouldUpdate: true,
+        reason: 'Valid existing score found, can update'
+      };
+      
+    } catch (error) {
+      console.error('❌ Error in checkExistingScore:', error);
+      return {
+        exists: false,
+        comment: null,
+        shouldUpdate: false,
+        reason: `Error checking existing score: ${(error as any)?.message || 'Unknown error'}`
+      };
     }
   }
 

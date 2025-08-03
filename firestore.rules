@@ -46,6 +46,11 @@ service cloud.firestore {
       match /ShortFilmComments/{commentId} {
         allow read, write, create, update, delete: if isAdmin();
       }
+      
+      // Notes subcollection - only admins can read/write
+      match /notes/{noteId} {
+        allow read, write, create, update, delete: if isAdmin();
+      }
     }
     
     // Admin collection - only for admin users

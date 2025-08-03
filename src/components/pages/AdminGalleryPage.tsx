@@ -14,7 +14,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { AdminApplicationCard as AdminApplicationCardType, GalleryFilters, PaginationState, ExportProgress } from '../../types/admin.types';
+import { AdminApplicationCard as AdminApplicationCardType, GalleryFilters, PaginationState } from '../../types/admin.types';
 import ExportService from '../../services/exportService';
 import { useNotificationHelpers } from '../ui/NotificationSystem';
 import ExportDialog from '../ui/ExportDialog';
@@ -36,6 +36,7 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
   const [applications, setApplications] = useState<AdminApplicationCardType[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<AdminApplicationCardType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
@@ -47,7 +48,7 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
   const [showBulkSelect, setShowBulkSelect] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportProgress, setExportProgress] = useState<ExportProgress | undefined>();
+  const [exportProgress, setExportProgress] = useState<any>();
   const { showSuccess, showError } = useNotificationHelpers();
   
   // Filter and pagination state
@@ -210,28 +211,55 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
     setError(null);
 
     try {
-      // Build Firestore query
+      // Build base Firestore query - only use orderBy to avoid composite index issues
+      // We'll do filtering client-side to avoid needing composite indexes
       let q = query(
         collection(db, 'submissions'),
         orderBy('createdAt', 'desc'),
-        limit(pagination.itemsPerPage)
+        limit(100) // Fetch more items to allow for client-side filtering
       );
 
-      // Apply filters
-      if (filters.category && filters.category !== 'all') {
-        q = query(q, where('competitionCategory', '==', filters.category));
-      }
-
-      if (filters.status && filters.status !== 'all') {
-        q = query(q, where('status', '==', filters.status));
-      }
-
-      if (filters.dateRange?.start) {
-        q = query(q, where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateRange.start))));
-      }
-
-      if (filters.dateRange?.end) {
-        q = query(q, where('createdAt', '<=', Timestamp.fromDate(new Date(filters.dateRange.end))));
+      // Only apply one server-side filter to avoid composite index requirements
+      // Priority: date range > category > status
+      if (filters.dateRange?.start && filters.dateRange?.end) {
+        // If we have a date range, use that as the server-side filter
+        q = query(
+          collection(db, 'submissions'),
+          where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateRange.start))),
+          where('createdAt', '<=', Timestamp.fromDate(new Date(filters.dateRange.end))),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+      } else if (filters.dateRange?.start) {
+        q = query(
+          collection(db, 'submissions'),
+          where('createdAt', '>=', Timestamp.fromDate(new Date(filters.dateRange.start))),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+      } else if (filters.dateRange?.end) {
+        q = query(
+          collection(db, 'submissions'),
+          where('createdAt', '<=', Timestamp.fromDate(new Date(filters.dateRange.end))),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+      } else if (filters.category && filters.category !== 'all') {
+        // Use category as server-side filter if no date range
+        q = query(
+          collection(db, 'submissions'),
+          where('competitionCategory', '==', filters.category),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+      } else if (filters.status && filters.status !== 'all') {
+        // Use status as server-side filter if no date range or category
+        q = query(
+          collection(db, 'submissions'),
+          where('status', '==', filters.status),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
       }
 
       // Set up real-time listener
@@ -262,7 +290,7 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
               averageScore: data.scores && data.scores.length > 0 
                 ? data.scores.reduce((sum: number, score: any) => sum + (score.totalScore || 0), 0) / data.scores.length 
                 : undefined,
-              reviewStatus: data.reviewStatus || 'pending',
+              reviewStatus: data.reviewStatus,
               genres: data.genres || [],
               duration: data.duration || 0,
               format: data.format || 'live-action'
@@ -273,9 +301,10 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
 
           setApplications(applicationsData);
           setLoading(false);
+          setInitialLoad(false);
           setRefreshing(false);
           
-          // Update pagination info
+          // Update pagination info (will be recalculated after client-side filtering)
           setPagination(prev => ({
             ...prev,
             totalItems: applicationsData.length,
@@ -286,6 +315,7 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
           console.error('Error fetching applications:', error);
           setError(currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการโหลดข้อมูล' : 'Error loading applications');
           setLoading(false);
+          setInitialLoad(false);
           setRefreshing(false);
           
           showError(
@@ -302,8 +332,9 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
       console.error('Error setting up listener:', error);
       setError(currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการตั้งค่าการเชื่อมต่อ' : 'Error setting up connection');
       setLoading(false);
+      setInitialLoad(false);
     }
-  }, [user, filters, pagination.itemsPerPage, currentLanguage, showError, currentContent]);
+  }, [user, filters.category, filters.status, filters.dateRange, currentLanguage, showError, currentContent]);
 
   // Load data on mount and filter changes
   useEffect(() => {
@@ -321,6 +352,21 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
   useEffect(() => {
     let filtered = [...applications];
 
+    // Apply category filter (client-side if not already applied server-side)
+    if (filters.category && filters.category !== 'all') {
+      filtered = filtered.filter(app => app.competitionCategory === filters.category);
+    }
+
+    // Apply status filter (client-side if not already applied server-side)
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(app => {
+        // Ensure we're filtering by the exact status field from the database
+        const appStatus = app.status;
+        console.log(`Filtering: App ID ${app.id}, Status: "${appStatus}", Filter: "${filters.status}"`);
+        return appStatus === filters.status;
+      });
+    }
+
     // Apply search filter
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
@@ -336,6 +382,27 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
     // Apply country filter
     if (filters.country && filters.country !== 'all') {
       filtered = filtered.filter(app => app.country === filters.country);
+    }
+
+    // Apply date range filter (client-side if not already applied server-side)
+    if (filters.dateRange?.start || filters.dateRange?.end) {
+      filtered = filtered.filter(app => {
+        const appDate = app.createdAt;
+        let matchesStart = true;
+        let matchesEnd = true;
+        
+        if (filters.dateRange?.start) {
+          matchesStart = appDate >= new Date(filters.dateRange.start);
+        }
+        
+        if (filters.dateRange?.end) {
+          const endDate = new Date(filters.dateRange.end);
+          endDate.setHours(23, 59, 59, 999); // Include the entire end date
+          matchesEnd = appDate <= endDate;
+        }
+        
+        return matchesStart && matchesEnd;
+      });
     }
 
     // Apply sorting
@@ -532,7 +599,8 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
     </div>
   );
 
-  if (loading && applications.length === 0) {
+  // Show loading skeleton only during initial load and no data exists yet
+  if (initialLoad && applications.length === 0) {
     return (
       <div className="space-y-6 sm:space-y-8">
         <AdminZoneHeader
@@ -551,7 +619,8 @@ const AdminGalleryPage: React.FC<AdminGalleryPageProps> = ({ onSidebarToggle }) 
     );
   }
 
-  if (error && applications.length === 0) {
+  // Only show error state if there's an actual error AND no data was loaded
+  if (error && applications.length === 0 && !initialLoad) {
     return (
       <div className="space-y-6 sm:space-y-8">
         <AdminZoneHeader
