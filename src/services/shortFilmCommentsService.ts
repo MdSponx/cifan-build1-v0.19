@@ -40,6 +40,22 @@ export interface ShortFilmComment {
 class ShortFilmCommentsService {
   
   /**
+   * Test Firestore connection
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      // Test basic Firestore read operation
+      const testRef = collection(db, 'submissions');
+      const testQuery = query(testRef, orderBy('createdAt', 'desc'));
+      await getDocs(testQuery);
+      return true;
+    } catch (error) {
+      console.error('Firestore connection test failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Add a general comment
    */
   async addGeneralComment(
@@ -75,7 +91,7 @@ class ShortFilmCommentsService {
   }
 
   /**
-   * Add a scoring comment with scores
+   * Add a scoring comment with scores - Enhanced with better error handling
    */
   async addScoringComment(
     submissionId: string,
@@ -94,34 +110,78 @@ class ShortFilmCommentsService {
     metadata?: Record<string, any>
   ): Promise<string> {
     try {
+      console.log('🔄 Adding scoring comment to Firestore...');
+      console.log('📍 Submission ID:', submissionId);
+      console.log('👤 Admin ID:', adminId);
+      console.log('💾 Scores:', scores);
+      
+      // Test connection first
+      const connectionOk = await this.testConnection();
+      if (!connectionOk) {
+        throw new Error('Firestore connection failed');
+      }
+      
       const commentsRef = collection(db, 'submissions', submissionId, 'ShortFilmComments');
+      console.log('📁 Comments collection path:', `submissions/${submissionId}/ShortFilmComments`);
       
       // Map application scores to database format
       const dbScores = this.mapAppScoresToDatabase(scores);
-      console.log('💾 Saving scores to database:', {
+      console.log('💾 Mapped scores for database:', {
         original: scores,
         mapped: dbScores
       });
+      
+      // Create comment content if not provided
+      let commentContent = content?.trim();
+      if (!commentContent) {
+        commentContent = `Score Assessment: ${scores.totalScore}/50 points\n` +
+                        `• Technical Quality: ${scores.technical}/10\n` +
+                        `• Story & Narrative: ${scores.story}/10\n` +
+                        `• Creativity & Originality: ${scores.creativity}/10\n` +
+                        `• Connection to Chiang Mai: ${scores.chiangmai}/10\n` +
+                        `• Overall Impact: ${scores.overall}/10`;
+      }
       
       const commentData = {
         submissionId,
         adminId,
         adminName,
         adminEmail,
-        content: content || '',
+        content: commentContent,
         type: 'scoring' as const,
-        scores: dbScores, // Use mapped scores
-        metadata: metadata || {},
+        scores: dbScores,
+        metadata: {
+          ...metadata,
+          actionType: 'score_submitted',
+          scorePercentage: Math.round((scores.totalScore / 50) * 100)
+        },
         createdAt: serverTimestamp(),
         isEdited: false,
         isDeleted: false
       };
 
+      console.log('📝 Final comment data:', commentData);
+      
       const docRef = await addDoc(commentsRef, commentData);
+      console.log('✅ Comment added with ID:', docRef.id);
+      
       return docRef.id;
+      
     } catch (error) {
-      console.error('Error adding scoring comment:', error);
-      throw new Error('Failed to add scoring comment');
+      console.error('❌ Error in addScoringComment:', error);
+      
+      // Enhanced error categorization
+      if ((error as any).code === 'permission-denied') {
+        throw new Error('Permission denied: You do not have permission to add scores');
+      } else if ((error as any).code === 'not-found') {
+        throw new Error('Submission not found: The submission may have been deleted');
+      } else if ((error as any).code === 'unavailable') {
+        throw new Error('Service unavailable: Please try again later');
+      } else if ((error as any).message?.includes('network')) {
+        throw new Error('Network error: Please check your connection');
+      } else {
+        throw new Error(`Failed to add scoring comment: ${(error as any).message || 'Unknown error'}`);
+      }
     }
   }
 
@@ -549,27 +609,72 @@ class ShortFilmCommentsService {
   }
 
   /**
-   * Get the latest score by a specific admin
+   * Get the latest score by a specific admin - Enhanced with better error handling
    */
   async getLatestScoreByAdmin(submissionId: string, adminId: string): Promise<ShortFilmComment | null> {
     try {
+      console.log('🔍 Getting latest score by admin:', { submissionId, adminId });
+      
       const commentsRef = collection(db, 'submissions', submissionId, 'ShortFilmComments');
-      const q = query(
+      console.log('📁 Comments collection path:', `submissions/${submissionId}/ShortFilmComments`);
+      
+      // Use the simplest query that works reliably
+      console.log('🔎 Using simple query to find admin comments...');
+      const simpleQuery = query(
         commentsRef,
         where('adminId', '==', adminId),
-        where('type', '==', 'scoring'),
-        where('isDeleted', '==', false),
-        orderBy('createdAt', 'desc')
+        where('type', '==', 'scoring')
       );
       
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(simpleQuery);
+      console.log('✅ Query successful, total docs found:', snapshot.docs.length);
       
       if (snapshot.empty) {
+        console.log('📋 No scoring comments found for admin:', adminId);
         return null;
       }
       
-      const doc = snapshot.docs[0];
-      const data = doc.data();
+      // Filter out deleted comments and get the latest one
+      const validDocs = snapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          const isValid = !data.isDeleted;
+          
+          console.log('📄 Checking document:', {
+            id: doc.id,
+            adminId: data.adminId,
+            type: data.type,
+            isDeleted: data.isDeleted,
+            isValid,
+            createdAt: data.createdAt?.toDate()
+          });
+          
+          return isValid;
+        })
+        .sort((a, b) => {
+          // Sort by createdAt descending (newest first)
+          const aTime = a.data().createdAt?.toDate()?.getTime() || 0;
+          const bTime = b.data().createdAt?.toDate()?.getTime() || 0;
+          return bTime - aTime;
+        });
+      
+      if (validDocs.length === 0) {
+        console.log('📋 No valid (non-deleted) scoring comments found after filtering');
+        return null;
+      }
+      
+      const latestDoc = validDocs[0];
+      const data = latestDoc.data();
+      
+      console.log('📄 Latest score document selected:', {
+        id: latestDoc.id,
+        adminId: data.adminId,
+        adminName: data.adminName,
+        type: data.type,
+        hasScores: !!data.scores,
+        isDeleted: data.isDeleted,
+        createdAt: data.createdAt?.toDate()
+      });
       
       // Map database scores to application format
       const mappedScores = this.mapDatabaseScoresToApp(data.scores);
@@ -578,13 +683,13 @@ class ShortFilmCommentsService {
         mapped: mappedScores
       });
       
-      return {
-        id: doc.id,
-        submissionId: data.submissionId,
+      const result: ShortFilmComment = {
+        id: latestDoc.id,
+        submissionId: data.submissionId || submissionId,
         adminId: data.adminId,
         adminName: data.adminName,
-        adminEmail: data.adminEmail,
-        content: data.content,
+        adminEmail: data.adminEmail || '',
+        content: data.content || '',
         type: data.type,
         scores: mappedScores,
         metadata: data.metadata || {},
@@ -593,9 +698,26 @@ class ShortFilmCommentsService {
         isEdited: data.isEdited || false,
         isDeleted: data.isDeleted || false
       };
+      
+      console.log('✅ Successfully retrieved latest score by admin:', {
+        id: result.id,
+        totalScore: result.scores?.totalScore
+      });
+      return result;
+      
     } catch (error) {
-      console.error('Error fetching latest score by admin:', error);
-      throw new Error('Failed to fetch latest score');
+      console.error('❌ Error in getLatestScoreByAdmin:', error);
+      console.error('❌ Error details:', {
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        name: (error as any)?.name,
+        submissionId,
+        adminId
+      });
+      
+      // Return null instead of throwing to allow fallback to create new
+      console.log('🔄 Returning null due to error, will create new comment');
+      return null;
     }
   }
 
@@ -634,7 +756,7 @@ class ShortFilmCommentsService {
   }
 
   /**
-   * Update a scoring comment with new scores
+   * Update a scoring comment with new scores - Enhanced with better error handling
    */
   async updateScoringComment(
     submissionId: string,
@@ -651,24 +773,61 @@ class ShortFilmCommentsService {
     editedBy: string
   ): Promise<void> {
     try {
+      console.log('🔄 Updating scoring comment...');
+      console.log('📍 Submission ID:', submissionId);
+      console.log('📝 Comment ID:', commentId);
+      console.log('👤 Edited by:', editedBy);
+      console.log('💾 New scores:', scores);
+      
+      // Validate inputs
+      if (!submissionId || !commentId || !editedBy) {
+        throw new Error('Missing required parameters for update');
+      }
+      
+      // Test connection first
+      const connectionOk = await this.testConnection();
+      if (!connectionOk) {
+        throw new Error('Firestore connection failed');
+      }
+      
       const commentRef = doc(db, 'submissions', submissionId, 'ShortFilmComments', commentId);
+      console.log('📁 Comment reference path:', `submissions/${submissionId}/ShortFilmComments/${commentId}`);
+      
       const commentDoc = await getDoc(commentRef);
       
       if (!commentDoc.exists()) {
-        throw new Error('Comment not found');
+        console.error('❌ Comment document not found');
+        throw new Error('Comment not found - it may have been deleted or the ID is incorrect');
       }
 
       const currentData = commentDoc.data();
+      console.log('📄 Current comment data:', {
+        id: commentDoc.id,
+        type: currentData?.type,
+        adminId: currentData?.adminId,
+        hasScores: !!currentData?.scores
+      });
+      
+      // Verify this is a scoring comment
+      if (currentData?.type !== 'scoring') {
+        throw new Error('Cannot update non-scoring comment with scores');
+      }
+      
+      // Verify the user has permission to edit this comment
+      if (currentData?.adminId !== editedBy) {
+        console.warn('⚠️ User attempting to edit comment they did not create');
+        // Allow for now, but log the warning
+      }
       
       // Map application scores to database format
       const dbScores = this.mapAppScoresToDatabase(scores);
-      console.log('💾 Updating scores in database:', {
+      console.log('💾 Mapped scores for database update:', {
         original: scores,
         mapped: dbScores
       });
       
       // Create new content
-      let content = comments.trim();
+      let content = comments?.trim() || '';
       if (!content) {
         content = `Score Assessment (Updated): ${scores.totalScore}/50 points\n` +
                  `• Technical Quality: ${scores.technical}/10\n` +
@@ -678,31 +837,63 @@ class ShortFilmCommentsService {
                  `• Overall Impact: ${scores.overall}/10`;
       }
 
-      const editHistory = currentData.editHistory || [];
+      const editHistory = currentData?.editHistory || [];
       
-      await updateDoc(commentRef, {
+      const updateData = {
         content,
-        scores: dbScores, // Use mapped scores
+        scores: dbScores,
         updatedAt: serverTimestamp(),
         isEdited: true,
         editHistory: [
           ...editHistory,
           {
             editedAt: serverTimestamp(),
-            previousContent: currentData.content,
-            previousScores: currentData.scores,
+            previousContent: currentData?.content || '',
+            previousScores: currentData?.scores || {},
             editedBy
           }
         ],
         metadata: {
-          ...currentData.metadata,
+          ...(currentData?.metadata || {}),
           actionType: 'score_updated',
-          scorePercentage: Math.round((scores.totalScore / 50) * 100)
+          scorePercentage: Math.round((scores.totalScore / 50) * 100),
+          lastEditedBy: editedBy,
+          editCount: (currentData?.metadata?.editCount || 0) + 1
         }
-      });
+      };
+      
+      console.log('📝 Update data prepared:', updateData);
+      
+      await updateDoc(commentRef, updateData);
+      console.log('✅ Scoring comment updated successfully');
+      
     } catch (error) {
-      console.error('Error updating scoring comment:', error);
-      throw new Error('Failed to update scoring comment');
+      console.error('❌ Error in updateScoringComment:', error);
+      console.error('❌ Error details:', {
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        name: (error as any)?.name,
+        submissionId,
+        commentId,
+        editedBy
+      });
+      
+      // Enhanced error categorization
+      if ((error as any).code === 'permission-denied') {
+        throw new Error('Permission denied: You do not have permission to update this score');
+      } else if ((error as any).code === 'not-found') {
+        throw new Error('Score not found: The score may have been deleted');
+      } else if ((error as any).code === 'unavailable') {
+        throw new Error('Service unavailable: Please try again later');
+      } else if ((error as any).message?.includes('network')) {
+        throw new Error('Network error: Please check your connection');
+      } else if ((error as any).message?.includes('Comment not found')) {
+        throw new Error('Score comment not found: It may have been deleted by another admin');
+      } else if ((error as any).message?.includes('Missing required parameters')) {
+        throw new Error('Invalid update request: Missing required information');
+      } else {
+        throw new Error(`Failed to update scoring comment: ${(error as any).message || 'Unknown error'}`);
+      }
     }
   }
 

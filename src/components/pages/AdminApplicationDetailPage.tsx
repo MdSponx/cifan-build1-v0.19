@@ -805,86 +805,230 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
   };
 
   const handleSaveScore = async (scores: ScoringCriteria) => {
+    console.log('🚀 Enhanced handleSaveScore called with:', scores);
+    
     setIsSubmittingScore(true);
+    
     try {
-      if (!user) throw new Error('User not authenticated');
+      // Enhanced validation
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      if (!user.uid) {
+        throw new Error('User ID not found');
+      }
 
+      // Validate scores
+      if (!scores || typeof scores.totalScore !== 'number') {
+        throw new Error('Invalid score data');
+      }
+
+      console.log('✅ Validation passed');
       console.log('🔄 Starting save process...');
+      console.log('👤 User:', { uid: user.uid, name: user.displayName, email: user.email });
       console.log('💾 Saving score data:', scores);
 
-      // If user already has a score, update it. Otherwise, create new one.
-      if (currentUserScore) {
-        console.log('📝 Updating existing score...');
-        // Update existing score
-        await shortFilmCommentsService.updateScoringComment(
-          applicationId,
-          currentUserScore.id,
-          {
-            technical: scores.technical,
-            story: scores.story,
-            creativity: scores.creativity,
-            chiangmai: scores.chiangmai,
-            overall: scores.overall,
-            totalScore: scores.totalScore
-          },
-          scores.comments || '',
-          user.uid
-        );
-      } else {
-        console.log('➕ Creating new score...');
-        // Create new score
-        await shortFilmCommentsService.addScoringComment(
-          applicationId,
-          user.uid,
-          user.displayName || user.email || 'Admin',
-          user.email || '',
-          {
-            technical: scores.technical,
-            story: scores.story,
-            creativity: scores.creativity,
-            chiangmai: scores.chiangmai,
-            overall: scores.overall,
-            totalScore: scores.totalScore
-          },
-          scores.comments
-        );
+      let operationSuccess = false;
+
+      // Step 1: Save to comments service with enhanced error handling
+      try {
+        // First, check if user already has a scoring comment by querying the service
+        console.log('🔍 Checking if user already has a scoring comment...');
+        console.log('🔍 User ID to check:', user.uid);
+        console.log('🔍 Application ID:', applicationId);
+        
+        let existingUserScore: any = null;
+        
+        try {
+          existingUserScore = await shortFilmCommentsService.getLatestScoreByAdmin(applicationId, user.uid);
+          console.log('📋 Existing user score check result:', existingUserScore ? {
+            id: existingUserScore.id,
+            adminId: existingUserScore.adminId,
+            adminName: existingUserScore.adminName,
+            totalScore: existingUserScore.scores?.totalScore,
+            isDeleted: existingUserScore.isDeleted
+          } : 'No existing score found');
+        } catch (checkError) {
+          console.warn('⚠️ Error checking existing score, will create new one:', checkError);
+          existingUserScore = null;
+        }
+        
+        // Double-check: also look at the currentUserScore from the UI state
+        console.log('🔍 Also checking currentUserScore from UI state:', currentUserScore ? {
+          id: currentUserScore.id,
+          adminId: currentUserScore.adminId,
+          totalScore: currentUserScore.scores?.totalScore
+        } : 'No currentUserScore in UI state');
+        
+        // Use the most reliable source - prefer the fresh query result
+        const scoreToUpdate = existingUserScore || currentUserScore;
+        
+        if (scoreToUpdate && scoreToUpdate.id && !scoreToUpdate.isDeleted) {
+          console.log('📝 Updating existing score...');
+          console.log('📝 Score to update ID:', scoreToUpdate.id);
+          console.log('📝 Score admin ID:', scoreToUpdate.adminId);
+          console.log('📝 Current user ID:', user.uid);
+          
+          // Verify this score belongs to the current user
+          if (scoreToUpdate.adminId !== user.uid) {
+            console.warn('⚠️ Score admin ID does not match current user, creating new score instead');
+            throw new Error('Score ownership mismatch');
+          }
+          
+          try {
+            await shortFilmCommentsService.updateScoringComment(
+              applicationId,
+              scoreToUpdate.id,
+              {
+                technical: scores.technical,
+                story: scores.story,
+                creativity: scores.creativity,
+                chiangmai: scores.chiangmai,
+                overall: scores.overall,
+                totalScore: scores.totalScore
+              },
+              scores.comments || '',
+              user.uid
+            );
+            console.log('✅ Score updated in comments service');
+          } catch (updateError) {
+            console.warn('⚠️ Update failed, trying to create new score instead:', updateError);
+            
+            // If update fails (e.g., comment was deleted), create a new one
+            const commentId = await shortFilmCommentsService.addScoringComment(
+              applicationId,
+              user.uid,
+              user.displayName || user.email || 'Admin',
+              user.email || '',
+              {
+                technical: scores.technical,
+                story: scores.story,
+                creativity: scores.creativity,
+                chiangmai: scores.chiangmai,
+                overall: scores.overall,
+                totalScore: scores.totalScore
+              },
+              scores.comments
+            );
+            console.log('✅ New score created after update failure with ID:', commentId);
+          }
+        } else {
+          console.log('➕ Creating new score (no existing valid score found)...');
+          console.log('📝 Reason: scoreToUpdate =', scoreToUpdate ? 'exists but invalid' : 'null');
+          if (scoreToUpdate) {
+            console.log('📝 Score details:', {
+              hasId: !!scoreToUpdate.id,
+              isDeleted: scoreToUpdate.isDeleted,
+              adminId: scoreToUpdate.adminId
+            });
+          }
+          
+          const commentId = await shortFilmCommentsService.addScoringComment(
+            applicationId,
+            user.uid,
+            user.displayName || user.email || 'Admin',
+            user.email || '',
+            {
+              technical: scores.technical,
+              story: scores.story,
+              creativity: scores.creativity,
+              chiangmai: scores.chiangmai,
+              overall: scores.overall,
+              totalScore: scores.totalScore
+            },
+            scores.comments
+          );
+          console.log('✅ New score created with ID:', commentId);
+        }
+        
+        operationSuccess = true;
+        
+      } catch (commentsError) {
+        console.error('❌ Comments service error:', commentsError);
+        throw new Error(`Failed to save to comments service: ${(commentsError as any)?.message || 'Unknown error'}`);
       }
 
-      // Update submissions document (existing functionality)
-      console.log('📄 Updating submissions document...');
-      const docRef = doc(db, 'submissions', applicationId);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const currentData = docSnap.data();
-        const currentScores = currentData.scores || [];
+      // Step 2: Update submissions document with enhanced error handling
+      try {
+        console.log('📄 Updating submissions document...');
+        const docRef = doc(db, 'submissions', applicationId);
+        const docSnap = await getDoc(docRef);
         
-        const updatedScores = currentScores.filter((score: any) => score.adminId !== user?.uid);
-        updatedScores.push({ ...scores, scoredAt: new Date() });
+        if (docSnap.exists()) {
+          const currentData = docSnap.data();
+          const currentScores = currentData.scores || [];
+          
+          // Remove existing score by this admin
+          const updatedScores = currentScores.filter((score: any) => score.adminId !== user.uid);
+          
+          // Add new score
+          updatedScores.push({ 
+            ...scores, 
+            scoredAt: new Date(),
+            adminId: user.uid,
+            adminName: user.displayName || user.email || 'Admin'
+          });
+          
+          await updateDoc(docRef, {
+            scores: updatedScores,
+            lastReviewedAt: new Date(),
+            lastModified: new Date()
+          });
+          
+          console.log('✅ Submissions document updated');
+        } else {
+          console.warn('⚠️ Submission document not found, but score was saved to comments');
+        }
         
-        await updateDoc(docRef, {
-          scores: updatedScores,
-          lastReviewedAt: new Date(),
-          lastModified: new Date()
-        });
+      } catch (docError) {
+        console.warn('⚠️ Failed to update submissions document:', docError);
+        // Don't throw error here - the score was still saved to comments
       }
 
-      console.log('✅ Score saved successfully');
+      // Step 3: Refresh data
+      try {
+        console.log('🔄 Refreshing comments data after save...');
+        await refreshCommentsData();
+        console.log('✅ Data refreshed successfully');
+      } catch (refreshError) {
+        console.warn('⚠️ Failed to refresh data:', refreshError);
+        // Don't throw error - save was successful
+      }
 
-      // Refresh comments data after successful save
-      console.log('🔄 Refreshing comments data after save...');
-      await refreshCommentsData();
+      // Show success message
+      const successMessage = currentUserScore 
+        ? (currentLanguage === 'th' ? 'อัปเดตคะแนนเรียบร้อย' : 'Score updated successfully')
+        : (currentLanguage === 'th' ? 'บันทึกคะแนนเรียบร้อย' : 'Score saved successfully');
+        
+      showSuccess(successMessage);
+      console.log('✅ Save operation completed successfully');
 
-      showSuccess(
-        currentUserScore 
-          ? (currentLanguage === 'th' ? 'อัปเดตคะแนนเรียบร้อย' : 'Score updated successfully')
-          : (currentLanguage === 'th' ? 'บันทึกคะแนนเรียบร้อย' : 'Score saved successfully')
-      );
     } catch (error) {
       console.error('❌ Error saving scores:', error);
-      showError(
-        currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการบันทึก' : 'Error saving scores'
-      );
+      
+      // Enhanced error reporting
+      let errorMessage = currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการบันทึก: ' : 'Error saving scores: ';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('permission') || error.message.includes('unauthorized')) {
+          errorMessage += currentLanguage === 'th' ? 'ไม่มีสิทธิ์ในการบันทึก' : 'Permission denied';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage += currentLanguage === 'th' ? 'ปัญหาเครือข่าย' : 'Network error';
+        } else if (error.message.includes('User not authenticated')) {
+          errorMessage += currentLanguage === 'th' ? 'กรุณาเข้าสู่ระบบใหม่' : 'Please log in again';
+        } else {
+          errorMessage += error.message;
+        }
+      } else {
+        errorMessage += currentLanguage === 'th' ? 'ข้อผิดพลาดที่ไม่รู้จัก' : 'Unknown error';
+      }
+      
+      showError(errorMessage);
+      
+      // Re-throw the error so VideoScoringPanel can handle it
+      throw error;
+      
     } finally {
       setIsSubmittingScore(false);
     }
@@ -1031,6 +1175,34 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
     </div>
   );
 
+  // Authentication Check
+  if (!user) {
+    return (
+      <div className="space-y-8">
+        <AdminZoneHeader
+          title={currentContent.pageTitle}
+          subtitle={currentContent.subtitle}
+          onSidebarToggle={onSidebarToggle || (() => {})}
+        />
+        <div className="text-center py-12">
+          <div className="text-6xl mb-6">🔐</div>
+          <h2 className={`text-2xl ${getClass('header')} mb-4 text-white`}>
+            Authentication Required
+          </h2>
+          <p className={`${getClass('body')} text-white/80 mb-6`}>
+            Please sign in to access the admin panel and score applications.
+          </p>
+          <button
+            onClick={() => window.location.hash = '#auth/signin'}
+            className="px-6 py-3 bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white rounded-lg hover:from-[#FCB283] hover:to-[#AA4626] transition-colors"
+          >
+            Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Loading State
   if (loading) {
     return (
@@ -1067,6 +1239,15 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
           <h2 className={`text-2xl ${getClass('header')} mb-4 text-white`}>
             {error}
           </h2>
+          <p className={`${getClass('body')} text-white/60 mb-4`}>
+            If you're having trouble accessing this page, try signing in again.
+          </p>
+          <button
+            onClick={() => window.location.hash = '#auth/signin'}
+            className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+          >
+            Sign In Again
+          </button>
         </div>
       </div>
     );
