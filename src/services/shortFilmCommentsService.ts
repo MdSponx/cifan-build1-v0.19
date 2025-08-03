@@ -322,7 +322,8 @@ class ShortFilmCommentsService {
    */
   subscribeToComments(
     submissionId: string,
-    callback: (comments: ShortFilmComment[]) => void
+    callback: (comments: ShortFilmComment[]) => void,
+    onError?: (error: any) => void
   ): () => void {
     console.log('🔍 Setting up comments subscription for submission:', submissionId);
     
@@ -337,15 +338,18 @@ class ShortFilmCommentsService {
       
       // Try multiple query strategies for subscription
       let unsubscribe: (() => void) | null = null;
+      let retryCount = 0;
+      const maxRetries = 3;
       
       const setupSubscription = (queryToUse: any, strategyName: string) => {
-        console.log(`📡 Setting up ${strategyName} subscription...`);
+        console.log(`📡 Setting up ${strategyName} subscription (attempt ${retryCount + 1})...`);
         
         return onSnapshot(queryToUse, (snapshot: any) => {
           console.log(`📊 ${strategyName} snapshot received:`, {
             docCount: snapshot.docs.length,
             fromCache: snapshot.metadata.fromCache,
-            hasPendingWrites: snapshot.metadata.hasPendingWrites
+            hasPendingWrites: snapshot.metadata.hasPendingWrites,
+            isEmpty: snapshot.empty
           });
 
           const comments: ShortFilmComment[] = [];
@@ -380,6 +384,12 @@ class ShortFilmCommentsService {
               let mappedScores;
               try {
                 mappedScores = this.mapDatabaseScoresToApp(data.scores);
+                if (mappedScores) {
+                  console.log(`🔄 Mapped scores for ${docSnap.id}:`, {
+                    original: data.scores,
+                    mapped: mappedScores
+                  });
+                }
               } catch (mappingError) {
                 console.warn(`⚠️ Error mapping scores in subscription for document ${docSnap.id}:`, mappingError);
                 mappedScores = undefined;
@@ -415,6 +425,9 @@ class ShortFilmCommentsService {
           }
           
           console.log(`✅ ${strategyName} subscription processed ${comments.length} comments`);
+          
+          // Reset retry count on successful callback
+          retryCount = 0;
           callback(comments);
           
         }, (error: any) => {
@@ -422,13 +435,20 @@ class ShortFilmCommentsService {
           console.error('❌ Error details:', {
             code: error.code,
             message: error.message,
-            name: error.name
+            name: error.name,
+            retryCount
           });
           
+          // Call error callback if provided
+          if (onError) {
+            onError(error);
+          }
+          
           // Try fallback strategy if this one fails
-          if (strategyName === 'filtered') {
+          if (strategyName === 'filtered' && retryCount < maxRetries) {
             console.log('🔄 Filtered subscription failed, trying simple subscription...');
             if (unsubscribe) unsubscribe();
+            retryCount++;
             
             try {
               const simpleQuery = query(commentsRef, where('isDeleted', '==', false));
@@ -437,13 +457,14 @@ class ShortFilmCommentsService {
               console.log('🔄 Simple subscription failed, trying unfiltered subscription...');
               unsubscribe = setupSubscription(commentsRef, 'unfiltered');
             }
-          } else if (strategyName === 'simple') {
+          } else if (strategyName === 'simple' && retryCount < maxRetries) {
             console.log('🔄 Simple subscription failed, trying unfiltered subscription...');
             if (unsubscribe) unsubscribe();
+            retryCount++;
             unsubscribe = setupSubscription(commentsRef, 'unfiltered');
           } else {
-            // All strategies failed, return empty array
-            console.error('❌ All subscription strategies failed');
+            // All strategies failed or max retries reached
+            console.error('❌ All subscription strategies failed or max retries reached');
             callback([]);
           }
         });
@@ -478,6 +499,9 @@ class ShortFilmCommentsService {
       
     } catch (error) {
       console.error('❌ Fatal error setting up comments subscription:', error);
+      if (onError) {
+        onError(error);
+      }
       callback([]);
       return () => {};
     }

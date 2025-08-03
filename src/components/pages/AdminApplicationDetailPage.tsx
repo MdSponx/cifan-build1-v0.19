@@ -774,13 +774,47 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
     setCurrentScores(scores);
   };
 
+  // Function to refresh comments data after saving
+  const refreshCommentsData = async () => {
+    console.log('🔄 Refreshing comments data...');
+    try {
+      const refreshedComments = await shortFilmCommentsService.getComments(applicationId);
+      console.log('📨 Refreshed comments:', refreshedComments.length);
+      
+      setComments(refreshedComments);
+      
+      // Convert data for Jury Comments section
+      const juryComments = convertCommentsToJuryData(refreshedComments);
+      console.log('🔄 Converted jury comments after refresh:', juryComments.length);
+      setJuryData(juryComments);
+      
+      // Calculate average score
+      const avgScore = calculateAverageFromComments(refreshedComments);
+      console.log('📊 Calculated average score after refresh:', avgScore);
+      setAverageScoreFromComments(avgScore);
+      
+      // Get current user's score
+      const userScore = getCurrentUserScore(refreshedComments, user!.uid);
+      console.log('👤 Current user score after refresh:', userScore ? 'found' : 'not found');
+      setCurrentUserScore(userScore);
+      
+      console.log('✅ Comments data refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing comments data:', error);
+    }
+  };
+
   const handleSaveScore = async (scores: ScoringCriteria) => {
     setIsSubmittingScore(true);
     try {
       if (!user) throw new Error('User not authenticated');
 
+      console.log('🔄 Starting save process...');
+      console.log('💾 Saving score data:', scores);
+
       // If user already has a score, update it. Otherwise, create new one.
       if (currentUserScore) {
+        console.log('📝 Updating existing score...');
         // Update existing score
         await shortFilmCommentsService.updateScoringComment(
           applicationId,
@@ -797,6 +831,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
           user.uid
         );
       } else {
+        console.log('➕ Creating new score...');
         // Create new score
         await shortFilmCommentsService.addScoringComment(
           applicationId,
@@ -816,6 +851,7 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
       }
 
       // Update submissions document (existing functionality)
+      console.log('📄 Updating submissions document...');
       const docRef = doc(db, 'submissions', applicationId);
       const docSnap = await getDoc(docRef);
       
@@ -833,13 +869,19 @@ const AdminApplicationDetailPage: React.FC<AdminApplicationDetailPageProps> = ({
         });
       }
 
+      console.log('✅ Score saved successfully');
+
+      // Refresh comments data after successful save
+      console.log('🔄 Refreshing comments data after save...');
+      await refreshCommentsData();
+
       showSuccess(
         currentUserScore 
           ? (currentLanguage === 'th' ? 'อัปเดตคะแนนเรียบร้อย' : 'Score updated successfully')
           : (currentLanguage === 'th' ? 'บันทึกคะแนนเรียบร้อย' : 'Score saved successfully')
       );
     } catch (error) {
-      console.error('Error saving scores:', error);
+      console.error('❌ Error saving scores:', error);
       showError(
         currentLanguage === 'th' ? 'เกิดข้อผิดพลาดในการบันทึก' : 'Error saving scores'
       );
