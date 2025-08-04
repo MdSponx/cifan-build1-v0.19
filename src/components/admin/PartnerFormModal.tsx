@@ -38,6 +38,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
     logoType: 'url',
     logoValue: '',
     level: 1,
+    order: 1,
     note: '',
     status: 'active'
   });
@@ -92,6 +93,10 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
       logoUrl: 'Logo URL',
       logoUrlPlaceholder: 'https://example.com/logo.png',
       level: 'Level *',
+      order: 'Display Order *',
+      orderPlaceholder: 'Enter display order (1, 2, 3...)',
+      order: 'Display Order *',
+      orderPlaceholder: 'Enter display order (1, 2, 3...)',
       level1: 'Level 1 - Main',
       level2: 'Level 2 - Supporting',
       level3: 'Level 3 - Friend',
@@ -129,6 +134,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
         logoType: partner.logo.type,
         logoValue: partner.logo.value,
         level: partner.level,
+        order: partner.order,
         note: partner.note,
         status: partner.status
       });
@@ -141,6 +147,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
         logoType: 'url',
         logoValue: '',
         level: 1,
+        order: 1,
         note: '',
         status: 'active'
       });
@@ -206,6 +213,9 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
     }
     if (!formData.nameEn.trim()) {
       newErrors.nameEn = currentContent.errors.nameEn;
+    }
+    if (!formData.order || formData.order < 1) {
+      newErrors.order = currentLanguage === 'th' ? 'กรุณากรอกลำดับการแสดงผล' : 'Display order is required';
     }
     if (formData.logoType === 'url' && !formData.logoValue.trim()) {
       newErrors.logoValue = currentContent.errors.logoValue;
@@ -411,7 +421,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
             )}
 
             {/* Level and Status */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
                   {currentContent.level}
@@ -425,6 +435,25 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   <option value={2} className="bg-[#110D16]">{currentContent.level2}</option>
                   <option value={3} className="bg-[#110D16]">{currentContent.level3}</option>
                 </select>
+              </div>
+              
+              <div>
+                <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                  {currentContent.order}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.order}
+                  onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 1 })}
+                  className={`w-full px-3 py-2 bg-white/10 border rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] transition-colors text-sm ${
+                    errors.order ? 'border-red-500/50' : 'border-white/20'
+                  }`}
+                  placeholder={currentContent.orderPlaceholder}
+                />
+                {errors.order && (
+                  <p className="text-red-400 text-xs mt-1">{errors.order}</p>
+                )}
               </div>
               
               <div>

@@ -74,7 +74,11 @@ class PartnerService {
         if (a.level !== b.level) {
           return a.level - b.level;
         }
-        return b.createdAt.getTime() - a.createdAt.getTime();
+        // Sort by order within same level, then by createdAt
+        if (a.order !== b.order) {
+          return a.order - b.order;
+        }
+        return a.createdAt.getTime() - b.createdAt.getTime();
       });
     } catch (error) {
       console.error('Error fetching active partners:', error);
@@ -136,6 +140,7 @@ class PartnerService {
           value: logoValue
         },
         level: data.level,
+        order: data.order,
         note: data.note,
         status: data.status,
         createdAt: serverTimestamp(),
@@ -176,6 +181,7 @@ class PartnerService {
           value: logoValue
         },
         level: data.level,
+        order: data.order,
         note: data.note,
         status: data.status,
         updatedAt: serverTimestamp()

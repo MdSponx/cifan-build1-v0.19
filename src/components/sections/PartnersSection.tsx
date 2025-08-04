@@ -48,9 +48,9 @@ const PartnersSection = () => {
 
   // Group partners by level
   const partnersByLevel = {
-    main: partners.filter(p => p.level === 1),
-    support: partners.filter(p => p.level === 2),
-    friend: partners.filter(p => p.level === 3)
+    main: partners.filter(p => p.level === 1).sort((a, b) => a.order - b.order),
+    support: partners.filter(p => p.level === 2).sort((a, b) => a.order - b.order),
+    friend: partners.filter(p => p.level === 3).sort((a, b) => a.order - b.order)
   };
 
   if (loading) {

@@ -174,6 +174,7 @@ const PartnerManagementPage: React.FC<PartnerManagementPageProps> = ({ onSidebar
         logoType: partner.logo.type,
         logoValue: partner.logo.value,
         level: partner.level,
+        order: partner.order,
         note: partner.note,
         status: newStatus
       });
