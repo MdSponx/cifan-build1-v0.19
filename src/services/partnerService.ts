@@ -8,18 +8,46 @@ class PartnerService {
 
   async getAllPartners(): Promise<Partner[]> {
     try {
-      const q = query(
-        collection(db, this.collectionName),
-        orderBy('level', 'asc'),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
-      })) as Partner[];
+      // Try composite index query first
+      try {
+        const q = query(
+          collection(db, this.collectionName),
+          orderBy('level', 'asc'),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date()
+        })) as Partner[];
+      } catch (indexError: any) {
+        // If composite index doesn't exist, fall back to simple query
+        if (indexError?.code === 'failed-precondition' || indexError?.message?.includes('index')) {
+          console.warn('Composite index not available, using fallback query');
+          const q = query(
+            collection(db, this.collectionName),
+            orderBy('level', 'asc')
+          );
+          const snapshot = await getDocs(q);
+          const partners = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            updatedAt: doc.data().updatedAt?.toDate() || new Date()
+          })) as Partner[];
+          
+          // Sort by createdAt in memory
+          return partners.sort((a, b) => {
+            if (a.level !== b.level) {
+              return a.level - b.level;
+            }
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+        }
+        throw indexError;
+      }
     } catch (error) {
       console.error('Error fetching partners:', error);
       return [];
@@ -28,19 +56,48 @@ class PartnerService {
 
   async getActivePartners(): Promise<Partner[]> {
     try {
-      const q = query(
-        collection(db, this.collectionName),
-        where('status', '==', 'active'),
-        orderBy('level', 'asc'),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
-      })) as Partner[];
+      // Try composite index query first
+      try {
+        const q = query(
+          collection(db, this.collectionName),
+          where('status', '==', 'active'),
+          orderBy('level', 'asc'),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || new Date()
+        })) as Partner[];
+      } catch (indexError: any) {
+        // If composite index doesn't exist, fall back to simple query
+        if (indexError?.code === 'failed-precondition' || indexError?.message?.includes('index')) {
+          console.warn('Composite index not available for active partners, using fallback query');
+          const q = query(
+            collection(db, this.collectionName),
+            where('status', '==', 'active'),
+            orderBy('level', 'asc')
+          );
+          const snapshot = await getDocs(q);
+          const partners = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            updatedAt: doc.data().updatedAt?.toDate() || new Date()
+          })) as Partner[];
+          
+          // Sort by createdAt in memory
+          return partners.sort((a, b) => {
+            if (a.level !== b.level) {
+              return a.level - b.level;
+            }
+            return b.createdAt.getTime() - a.createdAt.getTime();
+          });
+        }
+        throw indexError;
+      }
     } catch (error) {
       console.error('Error fetching active partners:', error);
       return [];
