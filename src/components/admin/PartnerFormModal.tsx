@@ -9,10 +9,6 @@ import {
   Upload,
   Globe,
   Image as ImageIcon,
-  Building2,
-  Star,
-  Award,
-  Medal,
   Loader
 } from 'lucide-react';
 
@@ -247,174 +243,161 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="glass-container rounded-2xl border border-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        className="glass-container rounded-xl border border-white/20 max-w-2xl w-full max-h-[95vh] flex flex-col"
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
-          <h2 className={`text-xl ${getClass('header')} text-white`}>
+      <div className="glass-container rounded-xl border border-white/20 w-full max-w-lg max-h-[90vh] flex flex-col">
+        
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+          <h2 className={`text-lg ${getClass('header')} text-white`}>
             {partner ? currentContent.editPartner : currentContent.addPartner}
           </h2>
           <button
             onClick={onClose}
             className="text-white/60 hover:text-white transition-colors"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Form */}
-        <div className="flex-1 overflow-y-auto">
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* General Error */}
-          {errors.general && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 sm:p-4">
-              <p className="text-red-400 text-sm">{errors.general}</p>
-            </div>
-          )}
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-4">
+            
+            {/* General Error */}
+            {errors.general && (
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3">
+                <p className="text-red-400 text-sm">{errors.general}</p>
+              </div>
+            )}
 
-          {/* Partner Names */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.nameTh}
-              </label>
-              <input
-                type="text"
-                value={formData.nameTh}
-                onChange={(e) => setFormData({ ...formData, nameTh: e.target.value })}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
-                  errors.nameTh ? 'border-red-500/50' : 'border-white/20'
-                }`}
-                placeholder="ชื่อพาร์ทเนอร์ภาษาไทย"
-              />
-              {errors.nameTh && (
-                <p className="text-red-400 text-sm mt-1">{errors.nameTh}</p>
-              )}
-            </div>
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.nameEn}
-              </label>
-              <input
-                type="text"
-                value={formData.nameEn}
-                onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
-                  errors.nameEn ? 'border-red-500/50' : 'border-white/20'
-                }`}
-                placeholder="Partner Name in English"
-              />
-              {errors.nameEn && (
-                <p className="text-red-400 text-sm mt-1">{errors.nameEn}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Logo Type Selection */}
-          <div>
-            <label className={`block ${getClass('body')} text-white/80 mb-3`}>
-              {currentContent.logoType}
-            </label>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData({ ...formData, logoType: 'url', logoValue: '' });
-                  setLogoFile(null);
-                  setLogoPreview('');
-                }}
-                className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base ${
-                  formData.logoType === 'url'
-                    ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
-                    : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
-                }`}
-              >
-                <Globe size={16} className="sm:w-5 sm:h-5" />
-                <span>{currentContent.logoUrl}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData({ ...formData, logoType: 'upload', logoValue: '' });
-                  setLogoPreview(partner?.logo.value || '');
-                }}
-                className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base ${
-                  formData.logoType === 'upload'
-                    ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
-                    : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
-                }`}
-              >
-                <Upload size={16} className="sm:w-5 sm:h-5" />
-                <span>{currentContent.uploadLogo}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Logo Input */}
-          {formData.logoType === 'url' ? (
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.logoUrl}
-              </label>
-              <input
-                type="url"
-                value={formData.logoValue}
-                onChange={(e) => handleLogoUrlChange(e.target.value)}
-                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
-                  errors.logoValue ? 'border-red-500/50' : 'border-white/20'
-                }`}
-                placeholder={currentContent.logoUrlPlaceholder}
-              />
-              {errors.logoValue && (
-                <p className="text-red-400 text-sm mt-1">{errors.logoValue}</p>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.uploadLogo}
-              </label>
-              <div
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
-                  errors.logo ? 'border-red-500/50' : 'border-white/30 hover:border-[#FCB283]/50'
-                }`}
-              >
+            {/* Partner Names */}
+            <div className="space-y-3">
+              <div>
+                <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                  {currentContent.nameTh}
+                </label>
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
-                  className="hidden"
+                  type="text"
+                  value={formData.nameTh}
+                  onChange={(e) => setFormData({ ...formData, nameTh: e.target.value })}
+                  className={`w-full px-3 py-2 bg-white/10 border rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] transition-colors text-sm ${
+                    errors.nameTh ? 'border-red-500/50' : 'border-white/20'
+                  }`}
+                  placeholder="ชื่อพาร์ทเนอร์ภาษาไทย"
                 />
-                <ImageIcon className="w-8 h-8 sm:w-12 sm:h-12 mx-auto text-white/40 mb-3 sm:mb-4" />
-                <p className={`${getClass('body')} text-white/60 mb-2`}>
-                  {currentContent.dragDrop}
-                </p>
+                {errors.nameTh && (
+                  <p className="text-red-400 text-xs mt-1">{errors.nameTh}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                  {currentContent.nameEn}
+                </label>
+                <input
+                  type="text"
+                  value={formData.nameEn}
+                  onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
+                  className={`w-full px-3 py-2 bg-white/10 border rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] transition-colors text-sm ${
+                    errors.nameEn ? 'border-red-500/50' : 'border-white/20'
+                  }`}
+                  placeholder="Partner Name in English"
+                />
+                {errors.nameEn && (
+                  <p className="text-red-400 text-xs mt-1">{errors.nameEn}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Logo Type Selection */}
+            <div>
+              <label className={`block ${getClass('body')} text-white/80 mb-2 text-sm`}>
+                {currentContent.logoType}
+              </label>
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-3 sm:px-4 py-2 rounded-lg bg-[#FCB283]/20 text-[#FCB283] hover:bg-[#FCB283]/30 transition-all duration-200 text-sm sm:text-base"
+                  onClick={() => {
+                    setFormData({ ...formData, logoType: 'url', logoValue: '' });
+                    setLogoFile(null);
+                    setLogoPreview('');
+                  }}
+                  className={`p-2 rounded-lg border transition-colors flex items-center justify-center space-x-1 text-sm ${
+                    formData.logoType === 'url'
+                      ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
+                      : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
+                  }`}
                 >
-                  {currentContent.selectFile}
+                  <Globe size={14} />
+                  <span>{currentContent.logoUrl}</span>
                 </button>
-                <p className="text-white/40 text-xs mt-2 px-2">
-                  {currentContent.supportedFormats}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, logoType: 'upload', logoValue: '' });
+                    setLogoPreview(partner?.logo.value || '');
+                  }}
+                  className={`p-2 rounded-lg border transition-colors flex items-center justify-center space-x-1 text-sm ${
+                    formData.logoType === 'upload'
+                      ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
+                      : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
+                  }`}
+                >
+                  <Upload size={14} />
+                  <span>{currentContent.uploadLogo}</span>
+                </button>
               </div>
-              {errors.logo && (
-                <p className="text-red-400 text-sm mt-1">{errors.logo}</p>
-              )}
             </div>
-          )}
 
-          {/* Logo Preview */}
-          {logoPreview && (
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.logoPreview}
-              </label>
-              <div className="bg-white/10 rounded-xl p-3 sm:p-4 flex items-center justify-center h-24 sm:h-32">
+            {/* Logo Input */}
+            {formData.logoType === 'url' ? (
+              <div>
+                <input
+                  type="url"
+                  value={formData.logoValue}
+                  onChange={(e) => handleLogoUrlChange(e.target.value)}
+                  className={`w-full px-3 py-2 bg-white/10 border rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] transition-colors text-sm ${
+                    errors.logoValue ? 'border-red-500/50' : 'border-white/20'
+                  }`}
+                  placeholder={currentContent.logoUrlPlaceholder}
+                />
+                {errors.logoValue && (
+                  <p className="text-red-400 text-xs mt-1">{errors.logoValue}</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <div
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                    errors.logo ? 'border-red-500/50' : 'border-white/30 hover:border-[#FCB283]/50'
+                  }`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  <ImageIcon className="w-8 h-8 mx-auto text-white/40 mb-2" />
+                  <p className={`${getClass('body')} text-white/60 text-xs mb-1`}>
+                    {currentContent.dragDrop}
+                  </p>
+                  <p className="text-white/40 text-xs">
+                    {currentContent.supportedFormats}
+                  </p>
+                </div>
+                {errors.logo && (
+                  <p className="text-red-400 text-xs mt-1">{errors.logo}</p>
+                )}
+              </div>
+            )}
+
+            {/* Logo Preview - Compact */}
+            {logoPreview && (
+              <div className="bg-white/10 rounded-lg p-3 flex items-center justify-center h-20">
                 <img
                   src={logoPreview}
                   alt="Logo Preview"
@@ -425,74 +408,74 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   }}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Level and Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.level}
-              </label>
-              <select
-                value={formData.level}
-                onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) as 1 | 2 | 3 })}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base"
-              >
-                <option value={1} className="bg-[#110D16]">{currentContent.level1}</option>
-                <option value={2} className="bg-[#110D16]">{currentContent.level2}</option>
-                <option value={3} className="bg-[#110D16]">{currentContent.level3}</option>
-              </select>
+            {/* Level and Status */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                  {currentContent.level}
+                </label>
+                <select
+                  value={formData.level}
+                  onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) as 1 | 2 | 3 })}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#FCB283] transition-colors text-sm"
+                >
+                  <option value={1} className="bg-[#110D16]">{currentContent.level1}</option>
+                  <option value={2} className="bg-[#110D16]">{currentContent.level2}</option>
+                  <option value={3} className="bg-[#110D16]">{currentContent.level3}</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                  {currentContent.status}
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#FCB283] transition-colors text-sm"
+                >
+                  <option value="active" className="bg-[#110D16]">{currentContent.active}</option>
+                  <option value="inactive" className="bg-[#110D16]">{currentContent.inactive}</option>
+                </select>
+              </div>
             </div>
+
+            {/* Note */}
             <div>
-              <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-                {currentContent.status}
+              <label className={`block ${getClass('body')} text-white/80 mb-1 text-sm`}>
+                {currentContent.note}
               </label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base"
-              >
-                <option value="active" className="bg-[#110D16]">{currentContent.active}</option>
-                <option value="inactive" className="bg-[#110D16]">{currentContent.inactive}</option>
-              </select>
+              <textarea
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] transition-colors resize-none text-sm"
+                placeholder={currentContent.notePlaceholder}
+              />
             </div>
           </div>
-
-          {/* Note */}
-          <div>
-            <label className={`block ${getClass('body')} text-white/80 mb-2`}>
-              {currentContent.note}
-            </label>
-            <textarea
-              value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-              rows={2}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 resize-none text-sm sm:text-base"
-              placeholder={currentContent.notePlaceholder}
-            />
-          </div>
-          </form>
         </div>
 
-          {/* Actions */}
-        <div className="flex justify-end space-x-3 sm:space-x-4 p-4 sm:p-6 border-t border-white/10 flex-shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl border border-white/20 text-white/80 hover:bg-white/10 transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
-            >
-              {currentContent.cancel}
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center space-x-2 text-sm sm:text-base"
-            >
-              {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
-              <span>{isSubmitting ? currentContent.saving : currentContent.save}</span>
-            </button>
+        {/* Footer - Fixed */}
+        <div className="flex justify-end space-x-3 p-4 border-t border-white/10 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 transition-colors disabled:opacity-50 text-sm"
+          >
+            {currentContent.cancel}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-lg bg-[#FCB283] hover:bg-[#AA4626] text-white transition-colors disabled:opacity-50 flex items-center space-x-2 text-sm"
+          >
+            {isSubmitting && <Loader className="w-3 h-3 animate-spin" />}
+            <span>{isSubmitting ? currentContent.saving : currentContent.save}</span>
+          </button>
         </div>
       </div>
     </div>
