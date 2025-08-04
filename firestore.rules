@@ -79,8 +79,8 @@ service cloud.firestore {
     
     // Partners collection - admin/super-admin can manage, all can read active
     match /partners/{partnerId} {
-      // Read: Allow all authenticated users to read partners
-      allow read: if request.auth != null;
+      // Read: Allow all users (including unauthenticated) to read partners
+      allow read: if true;
       
       // Write: Only admin/super-admin can create, update, delete
       allow write: if request.auth != null && 
