@@ -30,6 +30,57 @@ export interface AdminUser {
   permissions: string[];
 }
 
+// New Role Management Types
+export interface UserRole {
+  id: string;
+  name: string;
+  email: string;
+  role: 'super-admin' | 'admin' | 'editor' | 'jury' | 'user';
+  status: 'active' | 'inactive';
+  createdAt: Date;
+  lastLogin?: Date;
+  avatar?: string;
+  displayName?: string;
+}
+
+export interface RolePermissions {
+  canAssignRoles: boolean;
+  canManageUsers: boolean;
+  canViewDashboard: boolean;
+  canManageContent: boolean;
+  canAccessLibrary: boolean;
+  canRateFilms: boolean;
+}
+
+export interface RoleDefinition {
+  name: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  description: string;
+  permissions: RolePermissions;
+}
+
+export interface RoleChange {
+  adminId: string;
+  adminName: string;
+  oldRole: string;
+  newRole: string;
+  timestamp: Date;
+  reason?: string;
+  ipAddress?: string;
+}
+
+export interface RoleAuditLog {
+  id: string;
+  adminId: string;
+  targetUserId: string;
+  oldRole: string;
+  newRole: string;
+  timestamp: Date;
+  reason?: string;
+  ipAddress?: string;
+}
+
 export interface AdminProfile {
   uid: string;
   email: string;
@@ -69,6 +120,7 @@ export interface AdminPermissions {
   canFlagApplications: boolean;
   canDeleteApplications: boolean;
   canEditApplications: boolean;
+  canAssignRoles: boolean; // New permission for role management
 }
 
 export interface AdminContextType {

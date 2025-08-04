@@ -12,7 +12,8 @@ import {
   FileText, 
   LogOut, 
   X,
-  Shield
+  Shield,
+  Users
 } from 'lucide-react';
 
 interface AdminZoneSidebarProps {
@@ -49,6 +50,7 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
     th: {
       adminZone: "พื้นที่ผู้ดูแลระบบ",
       adminProfile: "โปรไฟล์ผู้ดูแล",
+      roleManagement: "จัดการบทบาทผู้ใช้",
       applicationsDashboard: "แดชบอร์ดใบสมัคร",
       applicationsGallery: "แกลเลอรี่ใบสมัคร",
       partnersManagement: "จัดการพาร์ทเนอร์",
@@ -62,6 +64,7 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
     en: {
       adminZone: "Admin Zone",
       adminProfile: "Admin Profile",
+      roleManagement: "Role Management",
       applicationsDashboard: "Applications Dashboard",
       applicationsGallery: "Applications Gallery",
       partnersManagement: "Partners Management",
@@ -83,6 +86,13 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
       label: currentContent.adminProfile,
       href: '#admin/profile'
     },
+    // Role Management - Only for Super Admin
+    ...(checkPermission('canAssignRoles') ? [{
+      id: 'admin/role-management',
+      icon: <Users size={20} />,
+      label: currentContent.roleManagement,
+      href: '#admin/role-management'
+    }] : []),
     ...(checkPermission('canViewDashboard') ? [{
       id: 'admin/dashboard',
       icon: <BarChart3 size={20} />,

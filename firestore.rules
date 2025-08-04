@@ -11,16 +11,25 @@ service cloud.firestore {
          get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'super-admin');
     }
     
+    // Helper function to check if user is super admin
+    function isSuperAdmin() {
+      return request.auth != null && 
+        request.auth.uid != null &&
+        exists(/databases/$(database)/documents/profiles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'super-admin';
+    }
+    
     // Helper function to check if user owns the resource
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
     
-    // Profiles collection - users can read/write their own profile, admins can read all
+    // Profiles collection - users can read/write their own profile, admins can read all, super-admins can update roles
     match /profiles/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) || isSuperAdmin();
       allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isSuperAdmin();
     }
     
     // Submissions collection
@@ -61,6 +70,11 @@ service cloud.firestore {
     // Admins collection - only for admin users  
     match /admins/{adminId} {
       allow read, write, create, update, delete: if isAdmin();
+    }
+    
+    // Role audit log collection - only super-admins can read/write
+    match /roleAuditLog/{logId} {
+      allow read, write, create, update, delete: if isSuperAdmin();
     }
     
     // Public collections (read-only for all users)

@@ -1,15 +1,12 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useTypography } from '../../utils/typography';
-import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 
 export interface Notification {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: 'success' | 'error' | 'info' | 'warning';
   title: string;
   message?: string;
   duration?: number;
-  persistent?: boolean;
   action?: {
     label: string;
     onClick: () => void;
@@ -28,7 +25,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within NotificationProvider');
+    throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
 };
@@ -40,8 +37,8 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
+    const id = Math.random().toString(36).substr(2, 9);
     const newNotification: Notification = {
       ...notification,
       id,
@@ -50,21 +47,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
     setNotifications(prev => [...prev, newNotification]);
 
-    // Auto-remove after duration (unless persistent)
-    if (!notification.persistent && newNotification.duration) {
+    // Auto remove after duration
+    if (newNotification.duration && newNotification.duration > 0) {
       setTimeout(() => {
         removeNotification(id);
       }, newNotification.duration);
     }
-  }, []);
+  };
 
-  const removeNotification = useCallback((id: string) => {
+  const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
-  }, []);
+  };
 
-  const clearAll = useCallback(() => {
+  const clearAll = () => {
     setNotifications([]);
-  }, []);
+  };
 
   return (
     <NotificationContext.Provider value={{
@@ -81,12 +78,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 
 const NotificationContainer: React.FC = () => {
   const { notifications, removeNotification } = useNotifications();
-  const { getClass } = useTypography();
-
-  if (notifications.length === 0) return null;
 
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-3 max-w-sm">
+    <div className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full">
       {notifications.map((notification) => (
         <NotificationItem
           key={notification.id}
@@ -104,23 +98,36 @@ interface NotificationItemProps {
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRemove }) => {
-  const { getClass } = useTypography();
+  const [isVisible, setIsVisible] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
 
-  const getIcon = (type: Notification['type']) => {
-    switch (type) {
+  useEffect(() => {
+    // Trigger entrance animation
+    const timer = setTimeout(() => setIsVisible(true), 10);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleRemove = () => {
+    setIsRemoving(true);
+    setTimeout(onRemove, 300); // Wait for exit animation
+  };
+
+  const getIcon = () => {
+    switch (notification.type) {
       case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-400" />;
+        return <CheckCircle size={20} className="text-green-400" />;
       case 'error':
-        return <XCircle className="w-5 h-5 text-red-400" />;
+        return <AlertCircle size={20} className="text-red-400" />;
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-400" />;
+        return <AlertCircle size={20} className="text-yellow-400" />;
       case 'info':
-        return <Info className="w-5 h-5 text-blue-400" />;
+      default:
+        return <Info size={20} className="text-blue-400" />;
     }
   };
 
-  const getStyles = (type: Notification['type']) => {
-    switch (type) {
+  const getColors = () => {
+    switch (notification.type) {
       case 'success':
         return 'border-green-500/30 bg-green-500/10';
       case 'error':
@@ -128,82 +135,83 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onRem
       case 'warning':
         return 'border-yellow-500/30 bg-yellow-500/10';
       case 'info':
+      default:
         return 'border-blue-500/30 bg-blue-500/10';
     }
   };
 
   return (
-    <div className={`glass-container rounded-xl p-4 border-l-4 ${getStyles(notification.type)} animate-slide-in-right`}>
-      <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0">
-          {getIcon(notification.type)}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <h4 className={`${getClass('subtitle')} text-white font-medium mb-1`}>
-            {notification.title}
-          </h4>
-          {notification.message && (
-            <p className={`${getClass('body')} text-white/80 text-sm leading-relaxed`}>
-              {notification.message}
-            </p>
-          )}
+    <div
+      className={`
+        transform transition-all duration-300 ease-in-out
+        ${isVisible && !isRemoving 
+          ? 'translate-x-0 opacity-100 scale-100' 
+          : 'translate-x-full opacity-0 scale-95'
+        }
+      `}
+    >
+      <div
+        className={`
+          glass-container rounded-lg border p-4 shadow-lg backdrop-blur-md
+          ${getColors()}
+        `}
+        style={{
+          background: 'rgba(255, 255, 255, 0.08)',
+          backdropFilter: 'blur(20px)'
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-0.5">
+            {getIcon()}
+          </div>
           
-          {notification.action && (
-            <button
-              onClick={notification.action.onClick}
-              className="mt-2 text-sm text-[#FCB283] hover:text-white transition-colors underline"
-            >
-              {notification.action.label}
-            </button>
-          )}
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-semibold text-white mb-1">
+              {notification.title}
+            </h4>
+            {notification.message && (
+              <p className="text-sm text-white/70 leading-relaxed">
+                {notification.message}
+              </p>
+            )}
+            {notification.action && (
+              <button
+                onClick={notification.action.onClick}
+                className="mt-2 text-sm text-[#FCB283] hover:text-[#AA4626] font-medium transition-colors"
+              >
+                {notification.action.label}
+              </button>
+            )}
+          </div>
+          
+          <button
+            onClick={handleRemove}
+            className="flex-shrink-0 p-1 hover:bg-white/10 rounded transition-colors text-white/60 hover:text-white"
+          >
+            <X size={16} />
+          </button>
         </div>
-        
-        <button
-          onClick={onRemove}
-          className="flex-shrink-0 p-1 rounded-lg hover:bg-white/10 transition-colors"
-        >
-          <X className="w-4 h-4 text-white/60 hover:text-white" />
-        </button>
       </div>
     </div>
   );
 };
 
-// Utility hooks for common notification types
+// Convenience hooks for different notification types
 export const useNotificationHelpers = () => {
   const { addNotification } = useNotifications();
 
-  const showSuccess = useCallback((title: string, message?: string) => {
-    addNotification({ type: 'success', title, message });
-  }, [addNotification]);
-
-  const showError = useCallback((title: string, message?: string) => {
-    addNotification({ type: 'error', title, message, duration: 8000 });
-  }, [addNotification]);
-
-  const showWarning = useCallback((title: string, message?: string) => {
-    addNotification({ type: 'warning', title, message, duration: 6000 });
-  }, [addNotification]);
-
-  const showInfo = useCallback((title: string, message?: string) => {
-    addNotification({ type: 'info', title, message });
-  }, [addNotification]);
-
-  const showProgress = useCallback((title: string, message?: string) => {
-    return addNotification({ 
-      type: 'info', 
-      title, 
-      message, 
-      persistent: true 
-    });
-  }, [addNotification]);
-
   return {
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-    showProgress
+    showSuccess: (title: string, message?: string, options?: Partial<Notification>) => {
+      addNotification({ type: 'success', title, message, ...options });
+    },
+    showError: (title: string, message?: string, options?: Partial<Notification>) => {
+      addNotification({ type: 'error', title, message, ...options });
+    },
+    showWarning: (title: string, message?: string, options?: Partial<Notification>) => {
+      addNotification({ type: 'warning', title, message, ...options });
+    },
+    showInfo: (title: string, message?: string, options?: Partial<Notification>) => {
+      addNotification({ type: 'info', title, message, ...options });
+    }
   };
 };

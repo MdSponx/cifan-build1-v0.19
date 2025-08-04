@@ -36,7 +36,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
     canGenerateReports: false,
     canFlagApplications: false,
     canDeleteApplications: false,
-    canEditApplications: false
+    canEditApplications: false,
+    canAssignRoles: false
   });
 
   // Check admin status and load admin profile
@@ -58,7 +59,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
           canGenerateReports: false,
           canFlagApplications: false,
           canDeleteApplications: false,
-          canEditApplications: false
+          canEditApplications: false,
+          canAssignRoles: false
         });
         setIsLoading(false);
         return;
@@ -204,7 +206,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
       canGenerateReports: false,
       canFlagApplications: false,
       canDeleteApplications: false,
-      canEditApplications: false
+      canEditApplications: false,
+      canAssignRoles: false
     };
 
     // Role-based permissions
@@ -222,7 +225,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
           canGenerateReports: true,
           canFlagApplications: true,
           canDeleteApplications: true,
-          canEditApplications: true
+          canEditApplications: true,
+          canAssignRoles: true
         };
         break;
         
@@ -239,7 +243,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
           canGenerateReports: true,
           canFlagApplications: true,
           canDeleteApplications: adminLevel === 'director' || adminLevel === 'lead',
-          canEditApplications: adminLevel !== 'junior'
+          canEditApplications: adminLevel !== 'junior',
+          canAssignRoles: false
         };
         break;
         
@@ -256,7 +261,8 @@ export const AdminProvider: React.FC<AdminProviderProps> = ({ children }) => {
           canGenerateReports: adminLevel !== 'junior',
           canFlagApplications: true,
           canDeleteApplications: false,
-          canEditApplications: false
+          canEditApplications: false,
+          canAssignRoles: false
         };
         break;
     }

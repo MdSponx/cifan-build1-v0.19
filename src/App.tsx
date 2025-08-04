@@ -33,6 +33,7 @@ import ApplicationsDashboardPage from './components/pages/ApplicationsDashboardP
 import AdminGalleryPage from './components/pages/AdminGalleryPage';
 import AdminProfilePage from './components/pages/AdminProfilePage';
 import AdminApplicationDetailPage from './components/pages/AdminApplicationDetailPage';
+import RoleManagement from './components/admin/RoleManagement';
 import TermsConditionsPage from './components/pages/TermsConditionsPage';
 import PrivacyPolicyPage from './components/pages/PrivacyPolicyPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -145,6 +146,16 @@ function App() {
             <AdminProtectedRoute>
               <AdminZoneLayout currentPage="admin/profile">
                 <AdminProfilePage />
+              </AdminZoneLayout>
+            </AdminProtectedRoute>
+          </ProtectedRoute>
+        );
+      case 'admin/role-management':
+        return (
+          <ProtectedRoute requireEmailVerification={true} requireProfileComplete={false}>
+            <AdminProtectedRoute requiredPermission="canAssignRoles">
+              <AdminZoneLayout currentPage="admin/role-management">
+                <RoleManagement />
               </AdminZoneLayout>
             </AdminProtectedRoute>
           </ProtectedRoute>
