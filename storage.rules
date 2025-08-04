@@ -32,5 +32,12 @@ service firebase.storage {
       allow write: if request.auth != null && 
         get(/databases/(default)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
     }
+    
+    // Partner logos - public read, admin write
+    match /partners/{allPaths=**} {
+      allow read: if true; // Public read for partner logos
+      allow write: if request.auth != null &&
+        get(/databases/(default)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'super-admin'];
+    }
   }
 }

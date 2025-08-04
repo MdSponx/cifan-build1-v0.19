@@ -77,6 +77,16 @@ service cloud.firestore {
       allow read, write, create, update, delete: if isSuperAdmin();
     }
     
+    // Partners collection - admin/super-admin can manage, all can read active
+    match /partners/{partnerId} {
+      // Read: Allow all authenticated users to read partners
+      allow read: if request.auth != null;
+      
+      // Write: Only admin/super-admin can create, update, delete
+      allow write: if request.auth != null && 
+        (get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role in ['admin', 'super-admin']);
+    }
+    
     // Public collections (read-only for all users)
     match /public/{document=**} {
       allow read: if true;

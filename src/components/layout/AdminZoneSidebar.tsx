@@ -111,11 +111,7 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
       id: 'admin/partners',
       icon: <Building2 size={20} />,
       label: currentContent.partnersManagement,
-      href: '#admin/partners',
-      badge: {
-        text: currentContent.comingSoon,
-        color: 'orange' as const
-      }
+      href: '#admin/partners'
     }] : []),
     {
       id: 'admin/activities',
