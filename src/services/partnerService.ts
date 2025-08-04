@@ -56,48 +56,26 @@ class PartnerService {
 
   async getActivePartners(): Promise<Partner[]> {
     try {
-      // Try composite index query first
-      try {
-        const q = query(
-          collection(db, this.collectionName),
-          where('status', '==', 'active'),
-          orderBy('level', 'asc'),
-          orderBy('createdAt', 'desc')
-        );
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate() || new Date(),
-          updatedAt: doc.data().updatedAt?.toDate() || new Date()
-        })) as Partner[];
-      } catch (indexError: any) {
-        // If composite index doesn't exist, fall back to simple query
-        if (indexError?.code === 'failed-precondition' || indexError?.message?.includes('index')) {
-          console.warn('Composite index not available for active partners, using fallback query');
-          const q = query(
-            collection(db, this.collectionName),
-            where('status', '==', 'active'),
-            orderBy('level', 'asc')
-          );
-          const snapshot = await getDocs(q);
-          const partners = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-            updatedAt: doc.data().updatedAt?.toDate() || new Date()
-          })) as Partner[];
-          
-          // Sort by createdAt in memory
-          return partners.sort((a, b) => {
-            if (a.level !== b.level) {
-              return a.level - b.level;
-            }
-            return b.createdAt.getTime() - a.createdAt.getTime();
-          });
+      // Try simple query with status filter only
+      const q = query(
+        collection(db, this.collectionName),
+        where('status', '==', 'active')
+      );
+      const snapshot = await getDocs(q);
+      const partners = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+      })) as Partner[];
+      
+      // Sort by level first, then by createdAt in memory
+      return partners.sort((a, b) => {
+        if (a.level !== b.level) {
+          return a.level - b.level;
         }
-        throw indexError;
-      }
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
     } catch (error) {
       console.error('Error fetching active partners:', error);
       return [];
