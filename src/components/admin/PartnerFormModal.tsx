@@ -248,8 +248,8 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="glass-container rounded-2xl border border-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+        className="glass-container rounded-xl border border-white/20 max-w-2xl w-full max-h-[95vh] flex flex-col"
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
           <h2 className={`text-xl ${getClass('header')} text-white`}>
             {partner ? currentContent.editPartner : currentContent.addPartner}
           </h2>
@@ -262,16 +262,17 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* General Error */}
           {errors.general && (
-            <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-4">
+            <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 sm:p-4">
               <p className="text-red-400 text-sm">{errors.general}</p>
             </div>
           )}
 
           {/* Partner Names */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className={`block ${getClass('body')} text-white/80 mb-2`}>
                 {currentContent.nameTh}
@@ -280,7 +281,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 type="text"
                 value={formData.nameTh}
                 onChange={(e) => setFormData({ ...formData, nameTh: e.target.value })}
-                className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
                   errors.nameTh ? 'border-red-500/50' : 'border-white/20'
                 }`}
                 placeholder="ชื่อพาร์ทเนอร์ภาษาไทย"
@@ -297,7 +298,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 type="text"
                 value={formData.nameEn}
                 onChange={(e) => setFormData({ ...formData, nameEn: e.target.value })}
-                className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
                   errors.nameEn ? 'border-red-500/50' : 'border-white/20'
                 }`}
                 placeholder="Partner Name in English"
@@ -313,7 +314,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
             <label className={`block ${getClass('body')} text-white/80 mb-3`}>
               {currentContent.logoType}
             </label>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <button
                 type="button"
                 onClick={() => {
@@ -321,13 +322,13 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   setLogoFile(null);
                   setLogoPreview('');
                 }}
-                className={`p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 ${
+                className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base ${
                   formData.logoType === 'url'
                     ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
                     : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
                 }`}
               >
-                <Globe size={20} />
+                <Globe size={16} className="sm:w-5 sm:h-5" />
                 <span>{currentContent.logoUrl}</span>
               </button>
               <button
@@ -336,13 +337,13 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   setFormData({ ...formData, logoType: 'upload', logoValue: '' });
                   setLogoPreview(partner?.logo.value || '');
                 }}
-                className={`p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 ${
+                className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base ${
                   formData.logoType === 'upload'
                     ? 'bg-[#FCB283]/20 border-[#FCB283]/50 text-[#FCB283]'
                     : 'bg-white/10 border-white/20 text-white/60 hover:bg-white/20'
                 }`}
               >
-                <Upload size={20} />
+                <Upload size={16} className="sm:w-5 sm:h-5" />
                 <span>{currentContent.uploadLogo}</span>
               </button>
             </div>
@@ -358,7 +359,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                 type="url"
                 value={formData.logoValue}
                 onChange={(e) => handleLogoUrlChange(e.target.value)}
-                className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 ${
+                className={`w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base ${
                   errors.logoValue ? 'border-red-500/50' : 'border-white/20'
                 }`}
                 placeholder={currentContent.logoUrlPlaceholder}
@@ -375,7 +376,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <div
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-6 text-center transition-all duration-200 ${
+                className={`border-2 border-dashed rounded-xl p-4 sm:p-6 text-center transition-all duration-200 ${
                   errors.logo ? 'border-red-500/50' : 'border-white/30 hover:border-[#FCB283]/50'
                 }`}
               >
@@ -386,18 +387,18 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
                   onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
                   className="hidden"
                 />
-                <ImageIcon className="w-12 h-12 mx-auto text-white/40 mb-4" />
+                <ImageIcon className="w-8 h-8 sm:w-12 sm:h-12 mx-auto text-white/40 mb-3 sm:mb-4" />
                 <p className={`${getClass('body')} text-white/60 mb-2`}>
                   {currentContent.dragDrop}
                 </p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 rounded-lg bg-[#FCB283]/20 text-[#FCB283] hover:bg-[#FCB283]/30 transition-all duration-200"
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-[#FCB283]/20 text-[#FCB283] hover:bg-[#FCB283]/30 transition-all duration-200 text-sm sm:text-base"
                 >
                   {currentContent.selectFile}
                 </button>
-                <p className="text-white/40 text-xs mt-2">
+                <p className="text-white/40 text-xs mt-2 px-2">
                   {currentContent.supportedFormats}
                 </p>
               </div>
@@ -413,7 +414,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <label className={`block ${getClass('body')} text-white/80 mb-2`}>
                 {currentContent.logoPreview}
               </label>
-              <div className="bg-white/10 rounded-xl p-4 flex items-center justify-center h-32">
+              <div className="bg-white/10 rounded-xl p-3 sm:p-4 flex items-center justify-center h-24 sm:h-32">
                 <img
                   src={logoPreview}
                   alt="Logo Preview"
@@ -428,7 +429,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
           )}
 
           {/* Level and Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className={`block ${getClass('body')} text-white/80 mb-2`}>
                 {currentContent.level}
@@ -436,7 +437,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <select
                 value={formData.level}
                 onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) as 1 | 2 | 3 })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base"
               >
                 <option value={1} className="bg-[#110D16]">{currentContent.level1}</option>
                 <option value={2} className="bg-[#110D16]">{currentContent.level2}</option>
@@ -450,7 +451,7 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200"
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 text-sm sm:text-base"
               >
                 <option value="active" className="bg-[#110D16]">{currentContent.active}</option>
                 <option value="inactive" className="bg-[#110D16]">{currentContent.inactive}</option>
@@ -466,32 +467,33 @@ const PartnerFormModal: React.FC<PartnerFormModalProps> = ({
             <textarea
               value={formData.note}
               onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-              rows={3}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 resize-none"
+              rows={2}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-[#FCB283] focus:bg-white/20 transition-all duration-200 resize-none text-sm sm:text-base"
               placeholder={currentContent.notePlaceholder}
             />
           </div>
+          </form>
+        </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-4 pt-4 border-t border-white/10">
+        <div className="flex justify-end space-x-3 sm:space-x-4 p-4 sm:p-6 border-t border-white/10 flex-shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-6 py-3 rounded-xl border border-white/20 text-white/80 hover:bg-white/10 transition-all duration-200 disabled:opacity-50"
+              className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl border border-white/20 text-white/80 hover:bg-white/10 transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
             >
               {currentContent.cancel}
             </button>
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center space-x-2"
+              className="px-4 sm:px-6 py-2 sm:py-3 rounded-xl bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center space-x-2 text-sm sm:text-base"
             >
               {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
               <span>{isSubmitting ? currentContent.saving : currentContent.save}</span>
             </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
