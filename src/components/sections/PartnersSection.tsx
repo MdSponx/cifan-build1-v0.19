@@ -46,7 +46,7 @@ const PartnersSection = () => {
     }
   };
 
-  // Group partners by level
+  // Group partners by level and sort by order
   const partnersByLevel = {
     main: partners.filter(p => p.level === 1).sort((a, b) => a.order - b.order),
     support: partners.filter(p => p.level === 2).sort((a, b) => a.order - b.order),
@@ -86,70 +86,61 @@ const PartnersSection = () => {
         </div>
 
         <div className="space-y-12 sm:space-y-16">
-          {/* Main Partners - Level 1 (Largest) */}
+          {/* Main Partners - Level 1 (4-6 per row) */}
           {partnersByLevel.main.length > 0 && (
             <div className="text-center">
-              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 md:gap-8">
+              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
                 {partnersByLevel.main.map((partner) => (
-                  <div key={partner.id} className="glass-card p-4 sm:p-6 rounded-xl sm:rounded-2xl hover:scale-105 transition-all duration-300 group">
-                    <div className="w-32 h-16 sm:w-40 sm:h-20 md:w-48 md:h-24 lg:w-56 lg:h-28 flex items-center justify-center">
-                      <img
-                        src={partner.logo.value}
-                        alt={partner.name[currentLanguage]}
-                        className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/224x112/374151/9CA3AF?text=Logo';
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <img
+                    key={partner.id}
+                    src={partner.logo.value}
+                    alt={partner.name[currentLanguage]}
+                    className="max-w-[120px] max-h-[60px] sm:max-w-[140px] sm:max-h-[70px] md:max-w-[160px] md:max-h-[80px] lg:max-w-[180px] lg:max-h-[90px] xl:max-w-[200px] xl:max-h-[100px] object-contain hover:scale-110 hover:opacity-90 transition-all duration-300 drop-shadow-sm"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://via.placeholder.com/200x100/374151/9CA3AF?text=Main+Partner';
+                    }}
+                  />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Supporting Partners - Level 2 (Medium) */}
+          {/* Supporting Partners - Level 2 (Slightly larger than before) */}
           {partnersByLevel.support.length > 0 && (
             <div className="text-center">
-              <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 md:gap-6">
+              <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6">
                 {partnersByLevel.support.map((partner) => (
-                  <div key={partner.id} className="glass-card p-3 sm:p-4 rounded-lg sm:rounded-xl hover:scale-105 transition-all duration-300 group">
-                    <div className="w-24 h-12 sm:w-32 sm:h-16 md:w-36 md:h-18 flex items-center justify-center">
-                      <img
-                        src={partner.logo.value}
-                        alt={partner.name[currentLanguage]}
-                        className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/144x72/374151/9CA3AF?text=Logo';
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <img
+                    key={partner.id}
+                    src={partner.logo.value}
+                    alt={partner.name[currentLanguage]}
+                    className="max-w-[100px] max-h-[50px] sm:max-w-[120px] sm:max-h-[60px] md:max-w-[140px] md:max-h-[70px] lg:max-w-[160px] lg:max-h-[80px] object-contain hover:scale-110 hover:opacity-90 transition-all duration-300 drop-shadow-sm"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://via.placeholder.com/160x80/374151/9CA3AF?text=Supporting';
+                    }}
+                  />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Friend Partners - Level 3 (Small) */}
+          {/* Friend Partners - Level 3 (Same as old Level 2) */}
           {partnersByLevel.friend.length > 0 && (
             <div className="text-center">
-              <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 md:gap-4">
+              <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4">
                 {partnersByLevel.friend.map((partner) => (
-                  <div key={partner.id} className="glass-card p-2 sm:p-3 rounded-md sm:rounded-lg hover:scale-105 transition-all duration-300 group">
-                    <div className="w-20 h-10 sm:w-24 sm:h-12 md:w-28 md:h-14 flex items-center justify-center">
-                      <img
-                        src={partner.logo.value}
-                        alt={partner.name[currentLanguage]}
-                        className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/112x56/374151/9CA3AF?text=Logo';
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <img
+                    key={partner.id}
+                    src={partner.logo.value}
+                    alt={partner.name[currentLanguage]}
+                    className="max-w-[80px] max-h-[40px] sm:max-w-[100px] sm:max-h-[50px] md:max-w-[120px] md:max-h-[60px] lg:max-w-[140px] lg:max-h-[70px] object-contain hover:scale-110 hover:opacity-90 transition-all duration-300 drop-shadow-sm"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://via.placeholder.com/140x70/374151/9CA3AF?text=Friend';
+                    }}
+                  />
                 ))}
               </div>
             </div>
