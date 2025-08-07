@@ -15,24 +15,9 @@ import {
   MoreHorizontal,
   Copy
 } from 'lucide-react';
-
-interface Activity {
-  id: string;
-  name: string;
-  shortDescription: string;
-  image: string;
-  status: 'draft' | 'published' | 'cancelled' | 'completed';
-  isPublic: boolean;
-  maxParticipants: number;
-  eventDate: string;
-  startTime: string;
-  endTime: string;
-  venueName: string;
-  tags: string[];
-  contactEmail: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { Activity } from '../../types/activities';
+import { useTypography } from '../../utils/typography';
+import { getTagColor } from '../../utils/tagColors';
 
 // Mock data for demonstration
 const mockActivities: Activity[] = [
@@ -43,15 +28,28 @@ const mockActivities: Activity[] = [
     image: '/api/placeholder/400/240',
     status: 'published',
     isPublic: true,
+    needSubmission: true,
+    isOneDayActivity: true,
     maxParticipants: 30,
     eventDate: '2025-03-15',
     startTime: '09:00',
     endTime: '17:00',
+    registrationDeadline: '2025-03-10',
     venueName: 'Creative Hub Bangkok',
+    venueLocation: 'https://maps.google.com/creative-hub',
+    description: 'เวิร์กช็อปการสร้างภาพยนตร์อิสระสำหรับผู้เริ่มต้น เรียนรู้เทคนิคการถ่ายทำและการตัดต่อ รวมถึงการเล่าเรื่องผ่านภาพยนตร์',
+    organizers: ['CIFAN Team', 'Creative Hub Bangkok'],
     tags: ['workshop', 'education'],
     contactEmail: 'workshop@cifanfest.com',
+    contactName: 'Workshop Team',
+    contactPhone: '+66-2-123-4567',
     createdAt: '2025-01-20T10:00:00Z',
-    updatedAt: '2025-01-22T14:30:00Z'
+    updatedAt: '2025-01-22T14:30:00Z',
+    createdBy: 'admin1',
+    updatedBy: 'admin1',
+    registeredParticipants: 15,
+    waitlistCount: 0,
+    views: 120
   },
   {
     id: '2',
@@ -60,15 +58,28 @@ const mockActivities: Activity[] = [
     image: '/api/placeholder/400/240',
     status: 'published',
     isPublic: true,
+    needSubmission: true,
+    isOneDayActivity: true,
     maxParticipants: 500,
     eventDate: '2025-03-10',
     startTime: '19:00',
     endTime: '22:00',
+    registrationDeadline: '2025-03-05',
     venueName: 'Royal Paragon Hall',
+    venueLocation: 'https://maps.google.com/royal-paragon',
+    description: 'พิธีเปิดงานเทศกาลภาพยนตร์นานาชาติ CIFAN 2025 พร้อมการแสดงพิเศษและการประกาศรางวัล งานแสดงสุดพิเศษจากศิลปินชั้นนำ',
+    organizers: ['CIFAN Organization', 'Royal Paragon Hall'],
     tags: ['ceremony', 'official'],
     contactEmail: 'ceremony@cifanfest.com',
+    contactName: 'Ceremony Team',
+    contactPhone: '+66-2-234-5678',
     createdAt: '2025-01-18T09:15:00Z',
-    updatedAt: '2025-01-20T16:45:00Z'
+    updatedAt: '2025-01-20T16:45:00Z',
+    createdBy: 'admin1',
+    updatedBy: 'admin1',
+    registeredParticipants: 450,
+    waitlistCount: 25,
+    views: 890
   },
   {
     id: '3',
@@ -77,15 +88,28 @@ const mockActivities: Activity[] = [
     image: '/api/placeholder/400/240',
     status: 'draft',
     isPublic: false,
+    needSubmission: false,
+    isOneDayActivity: true,
     maxParticipants: 80,
     eventDate: '2025-03-16',
     startTime: '14:00',
     endTime: '16:00',
+    registrationDeadline: '2025-03-12',
     venueName: 'Conference Room A',
+    venueLocation: 'https://maps.google.com/conference-room-a',
+    description: 'การอภิปรายกับผู้กำกับภาพยนตร์สั้นที่มีชื่อเสียง และการแบ่งปันประสบการณ์ในวงการภาพยนตร์ เรียนรู้เทคนิคการสร้างหนังสั้น',
+    organizers: ['Film Panel Team'],
     tags: ['panel', 'short-film'],
     contactEmail: 'panel@cifanfest.com',
+    contactName: 'Panel Team',
+    contactPhone: '+66-2-345-6789',
     createdAt: '2025-01-25T11:20:00Z',
-    updatedAt: '2025-01-25T11:20:00Z'
+    updatedAt: '2025-01-25T11:20:00Z',
+    createdBy: 'admin2',
+    updatedBy: 'admin2',
+    registeredParticipants: 0,
+    waitlistCount: 0,
+    views: 45
   },
   {
     id: '4',
@@ -94,15 +118,28 @@ const mockActivities: Activity[] = [
     image: '/api/placeholder/400/240',
     status: 'published',
     isPublic: true,
+    needSubmission: true,
+    isOneDayActivity: true,
     maxParticipants: 120,
     eventDate: '2025-03-18',
     startTime: '20:00',
     endTime: '23:00',
+    registrationDeadline: '2025-03-15',
     venueName: 'Cinema Complex',
+    venueLocation: 'https://maps.google.com/cinema-complex',
+    description: 'คืนฉายภาพยนตร์สารคดีพิเศษ พร้อมการสนทนากับผู้กำกับหลังการฉาย ชมภาพยนตร์สารคดีคุณภาพสูงจากทั่วโลก',
+    organizers: ['Cinema Complex', 'Documentary Team'],
     tags: ['screening', 'documentary'],
     contactEmail: 'screening@cifanfest.com',
+    contactName: 'Screening Team',
+    contactPhone: '+66-2-456-7890',
     createdAt: '2025-01-23T13:45:00Z',
-    updatedAt: '2025-01-24T10:12:00Z'
+    updatedAt: '2025-01-24T10:12:00Z',
+    createdBy: 'admin1',
+    updatedBy: 'admin1',
+    registeredParticipants: 95,
+    waitlistCount: 5,
+    views: 234
   }
 ];
 
@@ -120,12 +157,34 @@ const statusLabels = {
   completed: 'Completed'
 };
 
-export default function ActivitiesGallery() {
-  const [activities, setActivities] = useState<Activity[]>(mockActivities);
+interface ActivitiesGalleryProps {
+  activities?: Activity[];
+  filter?: string | null;
+  onNavigate?: (route: string) => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
+}
+
+export default function ActivitiesGallery({
+  activities: propActivities,
+  filter,
+  onNavigate,
+  onRefresh,
+  isLoading = false
+}: ActivitiesGalleryProps = {}) {
+  const { getClass } = useTypography();
+  const [activities, setActivities] = useState<Activity[]>(propActivities || mockActivities);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+
+  // Update activities when prop changes
+  React.useEffect(() => {
+    if (propActivities) {
+      setActivities(propActivities);
+    }
+  }, [propActivities]);
 
   // Filter and sort activities
   const filteredActivities = activities
@@ -181,13 +240,13 @@ export default function ActivitiesGallery() {
   };
 
   const handleViewActivity = (activityId: string) => {
-    console.log('View activity:', activityId);
-    // Navigate to public view
+    // Navigate to public activity detail page
+    window.location.hash = `#activity/${activityId}`;
   };
 
   const handleEditActivity = (activityId: string) => {
     console.log('Edit activity:', activityId);
-    // Navigate to edit form
+    onNavigate?.(`admin/activities/edit/${activityId}`);
   };
 
   const handleDeleteActivity = (activityId: string) => {
@@ -228,14 +287,14 @@ export default function ActivitiesGallery() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Activities & Events</h1>
-          <p className="text-gray-600">จัดการกิจกรรมและอีเว้นต์ทั้งหมดของเทศกาลภาพยนตร์</p>
+          <h1 className={`text-3xl font-bold text-white mb-2 ${getClass('header')}`}>Activities & Events</h1>
+          <p className={`text-white/70 ${getClass('subtitle')}`}>จัดการกิจกรรมและอีเว้นต์ทั้งหมดของเทศกาลภาพยนตร์</p>
         </div>
         
         <div className="mt-4 lg:mt-0">
           <button
-            onClick={() => {/* Navigate to create form */}}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-2"
+            onClick={() => onNavigate?.('admin/activities/create')}
+            className="px-6 py-3 bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white rounded-lg hover:from-[#AA4626]/90 hover:to-[#FCB283]/90 transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
           >
             <Plus className="w-4 h-4" />
             Create New Activity
@@ -254,23 +313,23 @@ export default function ActivitiesGallery() {
               placeholder="Search activities..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-2.5 border border-white/20 bg-white/10 text-white placeholder-white/60 rounded-lg focus:ring-2 focus:ring-[#FCB283] focus:border-[#FCB283] transition-all backdrop-blur-sm"
             />
           </div>
 
           {/* Status Filter */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 w-4 h-4" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white"
+              className="pl-10 pr-8 py-2.5 border border-white/20 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-[#FCB283] focus:border-[#FCB283] transition-all appearance-none backdrop-blur-sm"
             >
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="completed">Completed</option>
+              <option value="all" className="bg-gray-800 text-white">All Status</option>
+              <option value="draft" className="bg-gray-800 text-white">Draft</option>
+              <option value="published" className="bg-gray-800 text-white">Published</option>
+              <option value="cancelled" className="bg-gray-800 text-white">Cancelled</option>
+              <option value="completed" className="bg-gray-800 text-white">Completed</option>
             </select>
           </div>
 
@@ -279,20 +338,20 @@ export default function ActivitiesGallery() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all appearance-none bg-white"
+              className="px-4 py-2.5 border border-white/20 bg-white/10 text-white rounded-lg focus:ring-2 focus:ring-[#FCB283] focus:border-[#FCB283] transition-all appearance-none backdrop-blur-sm"
             >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="name">Name A-Z</option>
-              <option value="date">Event Date</option>
+              <option value="newest" className="bg-gray-800 text-white">Newest First</option>
+              <option value="oldest" className="bg-gray-800 text-white">Oldest First</option>
+              <option value="name" className="bg-gray-800 text-white">Name A-Z</option>
+              <option value="date" className="bg-gray-800 text-white">Event Date</option>
             </select>
           </div>
         </div>
 
         {/* Bulk Actions */}
         {selectedActivities.size > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
-            <span className="text-sm text-blue-700">
+          <div className="mt-4 p-3 bg-[#FCB283]/20 border border-[#FCB283]/30 rounded-lg flex items-center justify-between">
+            <span className={`text-sm text-[#FCB283] font-medium ${getClass('body')}`}>
               {selectedActivities.size} activities selected
             </span>
             <div className="flex gap-2">
@@ -304,7 +363,7 @@ export default function ActivitiesGallery() {
               </button>
               <button
                 onClick={() => setSelectedActivities(new Set())}
-                className="px-3 py-1.5 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
+                className="px-3 py-1.5 bg-white/20 text-white text-sm rounded hover:bg-white/30 transition-colors"
               >
                 Clear Selection
               </button>
@@ -316,26 +375,26 @@ export default function ActivitiesGallery() {
       {/* Statistics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="glass-container rounded-lg p-4">
-          <div className="text-2xl font-bold text-gray-900">{activities.length}</div>
-          <div className="text-sm text-gray-600">Total Activities</div>
+          <div className="text-2xl font-bold text-white">{activities.length}</div>
+          <div className="text-sm text-white/70">Total Activities</div>
         </div>
         <div className="glass-container rounded-lg p-4">
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-2xl font-bold text-green-400">
             {activities.filter(a => a.status === 'published').length}
           </div>
-          <div className="text-sm text-gray-600">Published</div>
+          <div className="text-sm text-white/70">Published</div>
         </div>
         <div className="glass-container rounded-lg p-4">
-          <div className="text-2xl font-bold text-gray-600">
+          <div className="text-2xl font-bold text-yellow-400">
             {activities.filter(a => a.status === 'draft').length}
           </div>
-          <div className="text-sm text-gray-600">Drafts</div>
+          <div className="text-sm text-white/70">Drafts</div>
         </div>
         <div className="glass-container rounded-lg p-4">
-          <div className="text-2xl font-bold text-blue-600">
+          <div className="text-2xl font-bold text-[#FCB283]">
             {activities.filter(a => a.isPublic).length}
           </div>
-          <div className="text-sm text-gray-600">Public</div>
+          <div className="text-sm text-white/70">Public</div>
         </div>
       </div>
 
@@ -347,49 +406,52 @@ export default function ActivitiesGallery() {
             type="checkbox"
             checked={selectedActivities.size === filteredActivities.length && filteredActivities.length > 0}
             onChange={handleSelectAll}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-[#FCB283] border-white/30 bg-white/10 rounded focus:ring-[#FCB283]"
           />
-          <span className="text-sm text-gray-600">
+          <span className={`text-sm text-white/80 ${getClass('body')}`}>
             Select All ({filteredActivities.length} activities)
           </span>
         </div>
 
         {filteredActivities.length === 0 ? (
           <div className="glass-container rounded-xl p-12 text-center">
-            <div className="text-gray-400 mb-4">
+            <div className="text-white/40 mb-4">
               <Calendar className="w-16 h-16 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No activities found</h3>
-            <p className="text-gray-600 mb-6">
+            <h3 className="text-lg font-medium text-white mb-2">No activities found</h3>
+            <p className="text-white/70 mb-6">
               {searchTerm || statusFilter !== 'all' 
                 ? 'Try adjusting your search or filters'
                 : 'Create your first activity to get started'
               }
             </p>
             {!searchTerm && statusFilter === 'all' && (
-              <button className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+              <button 
+                onClick={() => onNavigate?.('admin/activities/create')}
+                className="px-6 py-3 bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white rounded-lg hover:from-[#AA4626]/90 hover:to-[#FCB283]/90 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+              >
                 Create First Activity
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
             {filteredActivities.map((activity) => (
-              <div key={activity.id} className="glass-container rounded-xl overflow-hidden group hover:shadow-xl transition-all duration-300">
+              <div key={activity.id} className="glass-container rounded-xl overflow-hidden group hover:shadow-xl hover:scale-105 transition-all duration-300 hover:border-[#FCB283]/50">
                 {/* Selection Checkbox */}
-                <div className="absolute top-4 left-4 z-10">
+                <div className="absolute top-3 left-3 z-10">
                   <input
                     type="checkbox"
                     checked={selectedActivities.has(activity.id)}
                     onChange={() => handleSelectActivity(activity.id)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-[#FCB283] border-white/30 bg-white/10 rounded focus:ring-[#FCB283]"
                   />
                 </div>
 
                 {/* Activity Image */}
-                <div className="relative h-48 bg-gradient-to-br from-gray-200 to-gray-300">
+                <div className="relative h-32 bg-gradient-to-br from-gray-200 to-gray-300">
                   <img
-                    src={activity.image}
+                    src={activity.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI0MCIgdmlld0JveD0iMCAwIDQwMCAyNDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iMjQwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xNzUgOTBMMTg1IDEwNUwyMDUgODVMMjI1IDExMEgyNTVWMTMwSDEyNVYxMTBMMTQwIDk1TDE3NSA5MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+'}
                     alt={activity.name}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -398,117 +460,117 @@ export default function ActivitiesGallery() {
                   />
                   
                   {/* Status Badge */}
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[activity.status]}`}>
                       {statusLabels[activity.status]}
                     </span>
                   </div>
 
                   {/* Public/Private Badge */}
-                  <div className="absolute bottom-4 right-4">
+                  <div className="absolute bottom-3 right-3">
                     {activity.isPublic ? (
-                      <div className="bg-white bg-opacity-90 rounded-full p-1.5">
-                        <Globe className="w-4 h-4 text-blue-500" />
+                      <div className="bg-white bg-opacity-90 rounded-full p-1">
+                        <Globe className="w-3 h-3 text-[#FCB283]" />
                       </div>
                     ) : (
-                      <div className="bg-white bg-opacity-90 rounded-full p-1.5">
-                        <EyeOff className="w-4 h-4 text-gray-500" />
+                      <div className="bg-white bg-opacity-90 rounded-full p-1">
+                        <EyeOff className="w-3 h-3 text-gray-500" />
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Activity Content */}
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">
+                <div className="p-4">
+                  <h3 className={`text-sm font-semibold text-white mb-2 line-clamp-2 leading-tight ${getClass('header')}`}>
                     {activity.name}
                   </h3>
                   
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {activity.shortDescription}
+                  <p className={`text-xs text-white/70 mb-3 line-clamp-2 ${getClass('body')}`}>
+                    {activity.shortDescription.length > 120 
+                      ? `${activity.shortDescription.substring(0, 120)}...`
+                      : activity.shortDescription
+                    }
                   </p>
 
                   {/* Activity Details */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      <Calendar className="w-3 h-3 text-[#FCB283]" />
                       <span>{formatDate(activity.eventDate)}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="w-4 h-4" />
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      <Clock className="w-3 h-3 text-[#FCB283]" />
                       <span>{formatTime(activity.startTime)} - {formatTime(activity.endTime)}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="w-4 h-4" />
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      <MapPin className="w-3 h-3 text-[#FCB283]" />
                       <span className="line-clamp-1">{activity.venueName}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Users className="w-4 h-4" />
-                      <span>{activity.maxParticipants === 0 ? 'Unlimited' : `Max ${activity.maxParticipants}`}</span>
+                    <div className="flex items-center gap-2 text-xs text-white/80">
+                      <Users className="w-3 h-3 text-[#FCB283]" />
+                      <span>
+                        {activity.maxParticipants === 0 ? 'Unlimited' : `${activity.registeredParticipants || 0}/${activity.maxParticipants}`}
+                      </span>
                     </div>
                   </div>
 
                   {/* Tags */}
                   {activity.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-4">
-                      {activity.tags.slice(0, 3).map((tag, index) => (
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {activity.tags.map((tag, index) => (
                         <span
                           key={index}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                          className={`px-2 py-0.5 text-xs rounded-full border ${getTagColor(tag)} ${getClass('body')}`}
                         >
                           {tag}
                         </span>
                       ))}
-                      {activity.tags.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                          +{activity.tags.length - 3}
-                        </span>
-                      )}
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleViewActivity(activity.id)}
-                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-1.5 text-white/60 hover:text-[#FCB283] hover:bg-[#FCB283]/20 rounded-lg transition-colors"
                         title="View Public"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
                       
                       <button
                         onClick={() => handleEditActivity(activity.id)}
-                        className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        className="p-1.5 text-white/60 hover:text-green-400 hover:bg-green-400/20 rounded-lg transition-colors"
                         title="Edit"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3.5 h-3.5" />
                       </button>
                       
                       <button
                         onClick={() => handleDuplicateActivity(activity.id)}
-                        className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                        className="p-1.5 text-white/60 hover:text-purple-400 hover:bg-purple-400/20 rounded-lg transition-colors"
                         title="Duplicate"
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleDeleteActivity(activity.id)}
-                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-white/60 hover:text-red-400 hover:bg-red-400/20 rounded-lg transition-colors"
                         title="Delete"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                       
-                      <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                        <MoreHorizontal className="w-4 h-4" />
+                      <button className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                        <MoreHorizontal className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

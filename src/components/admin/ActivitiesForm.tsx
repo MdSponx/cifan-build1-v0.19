@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import AnimatedButton from '../ui/AnimatedButton';
 import ErrorMessage from '../forms/ErrorMessage';
+import RichTextEditor from '../ui/RichTextEditor';
 
 interface ActivitiesFormProps {
   activity?: Activity | null;
@@ -63,8 +64,11 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
     shortDescription: '',
     status: 'draft',
     isPublic: true,
+    needSubmission: false,
     maxParticipants: 0,
+    isOneDayActivity: true,
     eventDate: '',
+    eventEndDate: '',
     startTime: '',
     endTime: '',
     registrationDeadline: '',
@@ -109,11 +113,14 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
       shortDescription: 'คำบรรยายสั้น',
       status: 'สถานะ',
       publicActivity: 'กิจกรรมสาธารณะ',
+      needSubmission: 'ต้องลงทะเบียน',
       maxParticipants: 'จำนวนผู้เข้าร่วมสูงสุด',
       unlimited: 'ไม่จำกัด',
 
       // Date and venue fields
+      oneDayActivity: 'จำนวนวันจัดกิจกรรม',
       eventDate: 'วันจัดงาน',
+      eventEndDate: 'วันสิ้นสุดงาน',
       startTime: 'เวลาเริ่ม',
       endTime: 'เวลาสิ้นสุด',
       registrationDeadline: 'วันหมดเขตรับสมัคร',
@@ -191,11 +198,14 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
       shortDescription: 'Short Description',
       status: 'Status',
       publicActivity: 'Public Activity',
+      needSubmission: 'Need Submission',
       maxParticipants: 'Max Participants',
       unlimited: 'Unlimited',
 
       // Date and venue fields
+      oneDayActivity: 'Activity Days',
       eventDate: 'Event Date',
+      eventEndDate: 'Event End Date',
       startTime: 'Start Time',
       endTime: 'End Time',
       registrationDeadline: 'Registration Deadline',
@@ -266,8 +276,11 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
         shortDescription: activity.shortDescription,
         status: activity.status,
         isPublic: activity.isPublic,
+        needSubmission: activity.needSubmission,
         maxParticipants: activity.maxParticipants,
+        isOneDayActivity: activity.isOneDayActivity,
         eventDate: activity.eventDate,
+        eventEndDate: activity.eventEndDate || '',
         startTime: activity.startTime,
         endTime: activity.endTime,
         registrationDeadline: activity.registrationDeadline,
@@ -316,6 +329,15 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
     // Date validation
     if (!formData.eventDate) {
       newErrors.eventDate = currentContent.required;
+    }
+
+    // End date validation for multi-day activities
+    if (!formData.isOneDayActivity) {
+      if (!formData.eventEndDate) {
+        newErrors.eventEndDate = currentContent.required;
+      } else if (formData.eventDate && formData.eventEndDate < formData.eventDate) {
+        newErrors.eventEndDate = currentLanguage === 'th' ? 'วันสิ้นสุดต้องมาหลังวันเริ่มต้น' : 'End date must be after start date';
+      }
     }
 
     if (!formData.registrationDeadline) {
@@ -662,8 +684,8 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
               </div>
             </div>
 
-            {/* Public Toggle and Max Participants */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Public Activity, Need Submission, and Max Participants */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label className={`block text-white/90 ${getClass('body')} mb-3`}>
                   {currentContent.publicActivity}
@@ -693,6 +715,42 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
                         <EyeOff className="w-4 h-4 text-gray-400" />
                         <span className={`text-gray-400 ${getClass('body')} text-sm`}>
                           {currentLanguage === 'th' ? 'ส่วนตัว' : 'Private'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-3`}>
+                  {currentContent.needSubmission}
+                </label>
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange('needSubmission', !formData.needSubmission)}
+                    className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
+                      formData.needSubmission ? 'bg-[#FCB283]' : 'bg-white/20'
+                    }`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                      formData.needSubmission ? 'translate-x-6' : 'translate-x-0.5'
+                    }`} />
+                  </button>
+                  <div className="flex items-center space-x-2">
+                    {formData.needSubmission ? (
+                      <>
+                        <User className="w-4 h-4 text-blue-400" />
+                        <span className={`text-blue-400 ${getClass('body')} text-sm`}>
+                          {currentLanguage === 'th' ? 'ต้องลงทะเบียน' : 'Registration Required'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Users className="w-4 h-4 text-gray-400" />
+                        <span className={`text-gray-400 ${getClass('body')} text-sm`}>
+                          {currentLanguage === 'th' ? 'ไม่ต้องลงทะเบียน' : 'No Registration'}
                         </span>
                       </>
                     )}
@@ -731,22 +789,111 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Event Date */}
+          <div className="space-y-6">
+            {/* One Day Activity Checkbox */}
             <div>
-              <label className={`block text-white/90 ${getClass('body')} mb-2`}>
-                {currentContent.eventDate} <span className="text-red-400">*</span>
+              <label className={`block text-white/90 ${getClass('body')} mb-3`}>
+                {currentContent.oneDayActivity}
               </label>
-              <input
-                type="date"
-                value={formData.eventDate}
-                onChange={(e) => handleInputChange('eventDate', e.target.value)}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.eventDate ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
-              />
-              <ErrorMessage error={errors.eventDate} />
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('isOneDayActivity', !formData.isOneDayActivity)}
+                  className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
+                    formData.isOneDayActivity ? 'bg-[#FCB283]' : 'bg-white/20'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${
+                    formData.isOneDayActivity ? 'translate-x-6' : 'translate-x-0.5'
+                  }`} />
+                </button>
+                <div className="flex items-center space-x-2">
+                  {formData.isOneDayActivity ? (
+                    <>
+                      <Calendar className="w-4 h-4 text-green-400" />
+                      <span className={`text-green-400 ${getClass('body')} text-sm`}>
+                        {currentLanguage === 'th' ? 'กิจกรรมหนึ่งวัน' : 'Single Day Event'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Calendar className="w-4 h-4 text-blue-400" />
+                      <span className={`text-blue-400 ${getClass('body')} text-sm`}>
+                        {currentLanguage === 'th' ? 'กิจกรรมหลายวัน' : 'Multi-Day Event'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Registration Deadline */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Event Date (Start Date) */}
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                  {formData.isOneDayActivity ? currentContent.eventDate : (currentLanguage === 'th' ? 'วันเริ่มงาน' : 'Start Date')} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={formData.eventDate}
+                  onChange={(e) => handleInputChange('eventDate', e.target.value)}
+                  className={`w-full p-3 rounded-lg bg-white/10 border ${errors.eventDate ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
+                />
+                <ErrorMessage error={errors.eventDate} />
+              </div>
+
+              {/* Event End Date (only show if not one day activity) */}
+              {!formData.isOneDayActivity && (
+                <div>
+                  <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                    {currentContent.eventEndDate} <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.eventEndDate}
+                    onChange={(e) => handleInputChange('eventEndDate', e.target.value)}
+                    min={formData.eventDate} // End date cannot be before start date
+                    className={`w-full p-3 rounded-lg bg-white/10 border ${errors.eventEndDate ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
+                  />
+                  <ErrorMessage error={errors.eventEndDate} />
+                </div>
+              )}
+            </div>
+
+            {/* Start Time and End Time - Always on the same row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Start Time */}
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                  <Clock className="w-4 h-4 inline mr-2" />
+                  {currentContent.startTime} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => handleInputChange('startTime', e.target.value)}
+                  className={`w-full p-3 rounded-lg bg-white/10 border ${errors.startTime ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
+                />
+                <ErrorMessage error={errors.startTime} />
+              </div>
+
+              {/* End Time */}
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                  <Clock className="w-4 h-4 inline mr-2" />
+                  {currentContent.endTime} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange('endTime', e.target.value)}
+                  className={`w-full p-3 rounded-lg bg-white/10 border ${errors.endTime ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
+                />
+                <ErrorMessage error={errors.endTime} />
+              </div>
+            </div>
+
+            {/* Registration Deadline - On its own separate line */}
             <div>
               <label className={`block text-white/90 ${getClass('body')} mb-2`}>
                 {currentContent.registrationDeadline} <span className="text-red-400">*</span>
@@ -760,66 +907,38 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
               <ErrorMessage error={errors.registrationDeadline} />
             </div>
 
-            {/* Start Time */}
-            <div>
-              <label className={`block text-white/90 ${getClass('body')} mb-2`}>
-                <Clock className="w-4 h-4 inline mr-2" />
-                {currentContent.startTime} <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => handleInputChange('startTime', e.target.value)}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.startTime ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
-              />
-              <ErrorMessage error={errors.startTime} />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Venue Name */}
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                  <MapPin className="w-4 h-4 inline mr-2" />
+                  {currentContent.venueName} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.venueName}
+                  onChange={(e) => handleInputChange('venueName', e.target.value)}
+                  className={`w-full p-3 rounded-lg bg-white/10 border ${errors.venueName ? 'border-red-400 error-field' : 'border-white/20'} text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none transition-colors`}
+                  placeholder={currentContent.venueNamePlaceholder}
+                />
+                <ErrorMessage error={errors.venueName} />
+              </div>
 
-            {/* End Time */}
-            <div>
-              <label className={`block text-white/90 ${getClass('body')} mb-2`}>
-                <Clock className="w-4 h-4 inline mr-2" />
-                {currentContent.endTime} <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => handleInputChange('endTime', e.target.value)}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.endTime ? 'border-red-400 error-field' : 'border-white/20'} text-white focus:border-[#FCB283] focus:outline-none transition-colors`}
-              />
-              <ErrorMessage error={errors.endTime} />
-            </div>
-
-            {/* Venue Name */}
-            <div>
-              <label className={`block text-white/90 ${getClass('body')} mb-2`}>
-                <MapPin className="w-4 h-4 inline mr-2" />
-                {currentContent.venueName} <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.venueName}
-                onChange={(e) => handleInputChange('venueName', e.target.value)}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.venueName ? 'border-red-400 error-field' : 'border-white/20'} text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none transition-colors`}
-                placeholder={currentContent.venueNamePlaceholder}
-              />
-              <ErrorMessage error={errors.venueName} />
-            </div>
-
-            {/* Venue Location */}
-            <div>
-              <label className={`block text-white/90 ${getClass('body')} mb-2`}>
-                <Globe className="w-4 h-4 inline mr-2" />
-                {currentContent.venueLocation}
-              </label>
-              <input
-                type="url"
-                value={formData.venueLocation}
-                onChange={(e) => handleInputChange('venueLocation', e.target.value)}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.venueLocation ? 'border-red-400 error-field' : 'border-white/20'} text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none transition-colors`}
-                placeholder={currentContent.venueLocationPlaceholder}
-              />
-              <ErrorMessage error={errors.venueLocation} />
+              {/* Venue Location */}
+              <div>
+                <label className={`block text-white/90 ${getClass('body')} mb-2`}>
+                  <Globe className="w-4 h-4 inline mr-2" />
+                  {currentContent.venueLocation}
+                </label>
+                <input
+                  type="url"
+                  value={formData.venueLocation}
+                  onChange={(e) => handleInputChange('venueLocation', e.target.value)}
+                  className={`w-full p-3 rounded-lg bg-white/10 border ${errors.venueLocation ? 'border-red-400 error-field' : 'border-white/20'} text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none transition-colors`}
+                  placeholder={currentContent.venueLocationPlaceholder}
+                />
+                <ErrorMessage error={errors.venueLocation} />
+              </div>
             </div>
           </div>
         </div>
@@ -841,17 +960,17 @@ const ActivitiesForm: React.FC<ActivitiesFormProps> = ({
               <label className={`block text-white/90 ${getClass('body')} mb-2`}>
                 {currentContent.description} <span className="text-red-400">*</span>
               </label>
-              <textarea
+              <RichTextEditor
                 value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                rows={6}
-                className={`w-full p-3 rounded-lg bg-white/10 border ${errors.description ? 'border-red-400 error-field' : 'border-white/20'} text-white placeholder-white/50 focus:border-[#FCB283] focus:outline-none transition-colors resize-vertical`}
+                onChange={(value) => handleInputChange('description', value)}
                 placeholder={currentContent.descriptionPlaceholder}
+                error={!!errors.description}
+                className={errors.description ? 'error' : ''}
               />
               <div className="flex justify-between items-center mt-1">
                 <ErrorMessage error={errors.description} />
                 <span className={`text-xs ${getClass('menu')} text-white/60`}>
-                  {formData.description.length} {currentContent.characterCount}
+                  {formData.description.replace(/<[^>]*>/g, '').length} {currentContent.characterCount}
                 </span>
               </div>
             </div>

@@ -2,6 +2,308 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Quill Editor Styles */
+@import 'quill/dist/quill.snow.css';
+
+/* Custom Rich Text Editor Styles */
+.rich-text-editor .ql-toolbar {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
+  border-radius: 0.5rem 0.5rem 0 0;
+  padding: 8px 12px;
+}
+
+.rich-text-editor .ql-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+  font-family: 'Raleway', sans-serif;
+  font-size: 14px;
+  min-height: 150px;
+}
+
+.rich-text-editor .ql-editor {
+  color: white;
+  padding: 16px;
+  min-height: 150px;
+}
+
+.rich-text-editor .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: normal;
+}
+
+.rich-text-editor .ql-toolbar .ql-stroke {
+  stroke: rgba(255, 255, 255, 0.7);
+}
+
+.rich-text-editor .ql-toolbar .ql-fill {
+  fill: rgba(255, 255, 255, 0.7);
+}
+
+.rich-text-editor .ql-toolbar button:hover .ql-stroke {
+  stroke: #FCB283;
+}
+
+.rich-text-editor .ql-toolbar button:hover .ql-fill {
+  fill: #FCB283;
+}
+
+.rich-text-editor .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #FCB283;
+}
+
+.rich-text-editor .ql-toolbar button.ql-active .ql-fill {
+  fill: #FCB283;
+}
+
+.rich-text-editor .ql-toolbar .ql-picker-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.rich-text-editor .ql-toolbar .ql-picker-label:hover {
+  color: #FCB283;
+}
+
+.rich-text-editor .ql-toolbar .ql-picker-options {
+  background: rgba(17, 13, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(20px);
+}
+
+.rich-text-editor .ql-toolbar .ql-picker-item {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rich-text-editor .ql-toolbar .ql-picker-item:hover {
+  color: #FCB283;
+  background: rgba(252, 178, 131, 0.1);
+}
+
+.rich-text-editor .ql-editor h1 {
+  font-size: 2em;
+  font-weight: 600;
+  color: #FCB283;
+  margin-bottom: 0.5em;
+}
+
+.rich-text-editor .ql-editor h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: #FCB283;
+  margin-bottom: 0.5em;
+}
+
+.rich-text-editor .ql-editor h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  color: #FCB283;
+  margin-bottom: 0.5em;
+}
+
+.rich-text-editor .ql-editor strong {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.rich-text-editor .ql-editor em {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rich-text-editor .ql-editor u {
+  text-decoration: underline;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Quill specific list styles */
+.rich-text-editor .ql-editor .ql-list {
+  counter-reset: list-1 list-2 list-3 list-4 list-5 list-6 list-7 list-8 list-9;
+  padding-left: 1.5em;
+}
+
+.rich-text-editor .ql-editor .ql-list li {
+  list-style-type: none;
+  position: relative;
+  padding-left: 1.5em;
+  margin-bottom: 0.25em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Bullet lists */
+.rich-text-editor .ql-editor .ql-list li[data-list="bullet"]::before {
+  content: "•";
+  color: #FCB283;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="bullet"].ql-indent-1::before {
+  content: "○";
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="bullet"].ql-indent-2::before {
+  content: "■";
+}
+
+/* Ordered lists */
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"] {
+  counter-increment: list-1;
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"]::before {
+  content: counter(list-1, decimal) ".";
+  color: #FCB283;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"].ql-indent-1 {
+  counter-increment: list-2;
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"].ql-indent-1::before {
+  content: counter(list-2, lower-alpha) ".";
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"].ql-indent-2 {
+  counter-increment: list-3;
+}
+
+.rich-text-editor .ql-editor .ql-list li[data-list="ordered"].ql-indent-2::before {
+  content: counter(list-3, lower-roman) ".";
+}
+
+/* Alternative approach for standard HTML lists if Quill generates them */
+.rich-text-editor .ql-editor ol,
+.rich-text-editor .ql-editor ul {
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.rich-text-editor .ql-editor ul {
+  list-style: none;
+}
+
+.rich-text-editor .ql-editor ol {
+  list-style: none;
+  counter-reset: item;
+}
+
+.rich-text-editor .ql-editor ul li {
+  position: relative;
+  padding-left: 1.5em;
+  margin-bottom: 0.25em;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rich-text-editor .ql-editor ul li::before {
+  content: "•";
+  color: #FCB283;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.rich-text-editor .ql-editor ol li {
+  position: relative;
+  padding-left: 1.5em;
+  margin-bottom: 0.25em;
+  color: rgba(255, 255, 255, 0.9);
+  counter-increment: item;
+}
+
+.rich-text-editor .ql-editor ol li::before {
+  content: counter(item) ".";
+  color: #FCB283;
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.rich-text-editor .ql-editor blockquote {
+  border-left: 4px solid #FCB283;
+  padding-left: 1em;
+  margin-left: 0;
+  margin-bottom: 1em;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(252, 178, 131, 0.05);
+  padding: 1em;
+  border-radius: 0.25rem;
+}
+
+.rich-text-editor .ql-editor a {
+  color: #FCB283;
+  text-decoration: underline;
+}
+
+.rich-text-editor .ql-editor a:hover {
+  color: #AA4626;
+}
+
+.rich-text-editor .ql-editor code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: #FCB283;
+}
+
+.rich-text-editor .ql-editor pre {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1em;
+  margin-bottom: 1em;
+  overflow-x: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.rich-text-editor.error .ql-toolbar {
+  border-color: #ef4444;
+}
+
+.rich-text-editor.error .ql-container {
+  border-color: #ef4444;
+}
+
+/* Focus styles */
+.rich-text-editor .ql-container.ql-focused {
+  border-color: #FCB283;
+  box-shadow: 0 0 0 2px rgba(252, 178, 131, 0.2);
+}
+
+.rich-text-editor .ql-toolbar:has(+ .ql-container.ql-focused) {
+  border-color: #FCB283;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .rich-text-editor .ql-toolbar {
+    padding: 6px 8px;
+  }
+  
+  .rich-text-editor .ql-toolbar .ql-formats {
+    margin-right: 8px;
+  }
+  
+  .rich-text-editor .ql-editor {
+    padding: 12px;
+    min-height: 120px;
+  }
+}
+
 /* Typography Classes */
 .nav-en {
   font-family: 'Raleway', sans-serif;
@@ -11,7 +313,6 @@
 .nav-th {
   font-family: 'Anuphan', sans-serif !important;
   font-weight: 300;
-  font-size: 1.05em; /* 5% larger than default */
 }
 
 .header-en {
@@ -22,7 +323,6 @@
 .header-th {
   font-family: 'Anuphan', sans-serif;
   font-weight: 600;
-  font-size: 1.15em; /* 15% larger than default */
 }
 
 .subtitle-en {
@@ -33,7 +333,6 @@
 .subtitle-th {
   font-family: 'Anuphan', sans-serif;
   font-weight: 200;
-  font-size: 1.1em; /* 10% larger than default */
 }
 
 .body-en {
@@ -44,7 +343,6 @@
 .body-th {
   font-family: 'Anuphan', sans-serif;
   font-weight: 400;
-  font-size: 1.08em; /* 8% larger than default */
 }
 
 .menu-en {
@@ -55,7 +353,6 @@
 .menu-th {
   font-family: 'Anuphan', sans-serif;
   font-weight: 200;
-  font-size: 1.05em; /* 5% larger than default */
 }
 
 /* Navigation Font - Raleway Medium 500 */

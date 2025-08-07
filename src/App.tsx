@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import AppProviders from './components/providers/AppProviders';
+import { NotificationProvider } from './components/ui/NotificationContext';
 import AdminProtectedRoute from './components/admin/AdminProtectedRoute';
 import { Navigation, Footer, UserZoneLayout, AdminZoneLayout } from './components/layout';
 import { AnimatedBackground } from './components/ui';
@@ -35,9 +36,15 @@ import AdminProfilePage from './components/pages/AdminProfilePage';
 import AdminApplicationDetailPage from './components/pages/AdminApplicationDetailPage';
 import PartnerManagementPage from './components/pages/PartnerManagementPage';
 import RoleManagement from './components/admin/RoleManagement';
+import ActivitiesRouter from './components/admin/ActivitiesRouter';
+import SubmissionsRouter from './components/admin/SubmissionsRouter';
+import UsersRouter from './components/admin/UsersRouter';
 import TermsConditionsPage from './components/pages/TermsConditionsPage';
 import PrivacyPolicyPage from './components/pages/PrivacyPolicyPage';
+import ActivityDetailPage from './components/pages/ActivityDetailPage';
+import PublicActivitiesPage from './components/pages/PublicActivitiesPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import NotificationTest from './components/debug/NotificationTest';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -54,6 +61,11 @@ function App() {
 
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // Navigation helper function
+  const handleNavigate = (route: string) => {
+    window.location.hash = `#${route}`;
+  };
 
   const renderPage = () => {
     switch (currentPage) {
@@ -121,6 +133,8 @@ function App() {
         return <PrivacyPolicyPage />;
       case 'coming-soon':
         return <ComingSoonPage />;
+      case 'activities':
+        return <PublicActivitiesPage />;
       case 'admin/dashboard':
         return (
           <ProtectedRoute requireEmailVerification={true} requireProfileComplete={false}>
@@ -172,6 +186,53 @@ function App() {
           </ProtectedRoute>
         );
       default:
+        // Handle admin activities routes
+        if (currentPage.startsWith('admin/activities')) {
+          return (
+            <ProtectedRoute requireEmailVerification={true} requireProfileComplete={false}>
+              <AdminProtectedRoute>
+                <AdminZoneLayout currentPage="admin/activities">
+                  <ActivitiesRouter 
+                    currentRoute={currentPage}
+                    onNavigate={handleNavigate}
+                  />
+                </AdminZoneLayout>
+              </AdminProtectedRoute>
+            </ProtectedRoute>
+          );
+        }
+        
+        // Handle admin submissions routes
+        if (currentPage.startsWith('admin/submissions')) {
+          return (
+            <ProtectedRoute requireEmailVerification={true} requireProfileComplete={false}>
+              <AdminProtectedRoute>
+                <AdminZoneLayout currentPage="admin/submissions">
+                  <SubmissionsRouter 
+                    currentRoute={currentPage}
+                    onNavigate={handleNavigate}
+                  />
+                </AdminZoneLayout>
+              </AdminProtectedRoute>
+            </ProtectedRoute>
+          );
+        }
+        
+        // Handle admin users routes
+        if (currentPage.startsWith('admin/users')) {
+          return (
+            <ProtectedRoute requireEmailVerification={true} requireProfileComplete={false}>
+              <AdminProtectedRoute requiredPermission="canManageUsers">
+                <AdminZoneLayout currentPage="admin/users">
+                  <UsersRouter 
+                    currentRoute={currentPage}
+                    onNavigate={handleNavigate}
+                  />
+                </AdminZoneLayout>
+              </AdminProtectedRoute>
+            </ProtectedRoute>
+          );
+        }
         // Handle application detail page with dynamic ID
         if (currentPage.startsWith('application-detail/')) {
           const applicationId = currentPage.replace('application-detail/', '');
@@ -220,6 +281,11 @@ function App() {
             </ProtectedRoute>
           );
         }
+        // Handle public activity detail page with dynamic ID
+        if (currentPage.startsWith('activity/')) {
+          const activityId = currentPage.replace('activity/', '');
+          return <ActivityDetailPage activityId={activityId} />;
+        }
         return (
           <>
             <OneHeroSection />
@@ -237,14 +303,19 @@ function App() {
 
   return (
     <AppProviders>
-      <div className="min-h-screen bg-[#110D16] text-white overflow-x-hidden relative">
-        <Navigation />
-        {renderPage()}
-        <Footer />
-        
-        {/* Animated Background Elements */}
-        <AnimatedBackground />
-      </div>
+      <NotificationProvider>
+        <div className="min-h-screen bg-[#110D16] text-white overflow-x-hidden relative">
+          <Navigation />
+          {renderPage()}
+          <Footer />
+          
+          {/* Animated Background Elements */}
+          <AnimatedBackground />
+          
+          {/* Notification Test Panel (for development) */}
+          <NotificationTest />
+        </div>
+      </NotificationProvider>
     </AppProviders>
   );
 }

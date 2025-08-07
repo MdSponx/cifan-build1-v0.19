@@ -13,7 +13,13 @@ import {
   LogOut, 
   X,
   Shield,
-  Users
+  Users,
+  Eye,
+  Plus,
+  Film,
+  Award,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 interface AdminZoneSidebarProps {
@@ -45,16 +51,26 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
   const { user, userProfile, signOut } = useAuth();
   const { adminProfile, permissions, checkPermission } = useAdmin();
   const currentLanguage = i18n.language as 'en' | 'th';
+  
+  // State for expandable menus
+  const [isApplicationsExpanded, setIsApplicationsExpanded] = useState(true);
+  const [isActivitiesExpanded, setIsActivitiesExpanded] = useState(true);
 
   const content = {
     th: {
       adminZone: "พื้นที่ผู้ดูแลระบบ",
       adminProfile: "โปรไฟล์ผู้ดูแล",
       roleManagement: "จัดการบทบาทผู้ใช้",
-      applicationsDashboard: "แดชบอร์ดใบสมัคร",
-      applicationsGallery: "แกลเลอรี่ใบสมัคร",
+      applications: "ใบสมัคร",
+      applicationsDashboard: "แดชบอร์ด",
+      applicationsGallery: "แกลเลอรี่",
       partnersManagement: "จัดการพาร์ทเนอร์",
       activitiesEvents: "กิจกรรมและอีเวนต์",
+      allActivities: "กิจกรรมทั้งหมด",
+      createNew: "สร้างใหม่",
+      workshops: "เวิร์กช็อป",
+      screenings: "การฉายภาพยนตร์",
+      ceremonies: "พิธีการ",
       articlesNews: "บทความและข่าวสาร",
       signOut: "ออกจากระบบ",
       welcome: "ยินดีต้อนรับ",
@@ -65,10 +81,16 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
       adminZone: "Admin Zone",
       adminProfile: "Admin Profile",
       roleManagement: "Role Management",
-      applicationsDashboard: "Applications Dashboard",
-      applicationsGallery: "Applications Gallery",
+      applications: "Applications",
+      applicationsDashboard: "Dashboard",
+      applicationsGallery: "Gallery",
       partnersManagement: "Partners Management",
       activitiesEvents: "Activities & Events",
+      allActivities: "All Activities",
+      createNew: "Create New",
+      workshops: "Workshops",
+      screenings: "Screenings",
+      ceremonies: "Ceremonies",
       articlesNews: "Articles & News",
       signOut: "Sign Out",
       welcome: "Welcome",
@@ -86,42 +108,32 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
       label: currentContent.adminProfile,
       href: '#admin/profile'
     },
-    // Role Management - Only for Super Admin
-    ...(checkPermission('canAssignRoles') ? [{
+    // Always show Role Management for admin users
+    {
       id: 'admin/role-management',
       icon: <Users size={20} />,
       label: currentContent.roleManagement,
       href: '#admin/role-management'
-    }] : []),
-    ...(checkPermission('canViewDashboard') ? [{
-      id: 'admin/dashboard',
-      icon: <BarChart3 size={20} />,
-      label: currentContent.applicationsDashboard,
-      href: '#admin/dashboard'
-    }] : []),
-    // FIXED: Always show Applications Gallery for admin users
-    // The permission check was causing the menu item to disappear
-    {
-      id: 'admin/gallery',
-      icon: <Grid size={20} />,
-      label: currentContent.applicationsGallery,
-      href: '#admin/gallery'
     },
-    ...(checkPermission('canManageUsers') ? [{
+    // Applications main menu (expandable)
+    {
+      id: 'admin/applications',
+      icon: <FileText size={20} />,
+      label: currentContent.applications,
+      href: '#admin/applications'
+    },
+    // Always show Partners Management for admin users
+    {
       id: 'admin/partners',
       icon: <Building2 size={20} />,
       label: currentContent.partnersManagement,
       href: '#admin/partners'
-    }] : []),
+    },
     {
       id: 'admin/activities',
       icon: <Calendar size={20} />,
       label: currentContent.activitiesEvents,
-      href: '#admin/activities',
-      badge: {
-        text: currentContent.comingSoon,
-        color: 'orange' as const
-      }
+      href: '#admin/activities'
     },
     {
       id: 'admin/articles',
@@ -133,7 +145,7 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
         color: 'orange' as const
       }
     }
-  ].filter(Boolean);
+  ];
 
   const handleSignOut = async () => {
     try {
@@ -157,6 +169,72 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 100);
   };
+
+  const handleApplicationsToggle = () => {
+    setIsApplicationsExpanded(!isApplicationsExpanded);
+  };
+
+  const handleActivitiesToggle = () => {
+    setIsActivitiesExpanded(!isActivitiesExpanded);
+  };
+
+  const isApplicationsPageActive = (page: string) => {
+    return page.startsWith('admin/dashboard') || page.startsWith('admin/gallery');
+  };
+
+  const isActivitiesPageActive = (page: string) => {
+    return page.startsWith('admin/activities');
+  };
+
+  // Applications submenu items
+  const applicationsSubmenuItems = [
+    {
+      id: 'admin/dashboard',
+      icon: <BarChart3 size={18} />,
+      label: currentContent.applicationsDashboard,
+      href: '#admin/dashboard'
+    },
+    {
+      id: 'admin/gallery',
+      icon: <Grid size={18} />,
+      label: currentContent.applicationsGallery,
+      href: '#admin/gallery'
+    }
+  ];
+
+  // Activities submenu items
+  const activitiesSubmenuItems = [
+    {
+      id: 'admin/activities',
+      icon: <Eye size={18} />,
+      label: currentContent.allActivities,
+      href: '#admin/activities'
+    },
+    {
+      id: 'admin/activities/create',
+      icon: <Plus size={18} />,
+      label: currentContent.createNew,
+      href: '#admin/activities/create'
+    },
+    {
+      id: 'admin/activities/workshops',
+      icon: <Users size={18} />,
+      label: currentContent.workshops,
+      href: '#admin/activities/workshops'
+    },
+    {
+      id: 'admin/activities/screenings',
+      icon: <Film size={18} />,
+      label: currentContent.screenings,
+      href: '#admin/activities/screenings'
+    },
+    {
+      id: 'admin/activities/ceremonies',
+      icon: <Award size={18} />,
+      label: currentContent.ceremonies,
+      href: '#admin/activities/ceremonies'
+    }
+  ];
 
   const getBadgeStyles = (color: string) => {
     const styles = {
@@ -254,34 +332,161 @@ const AdminZoneSidebar: React.FC<AdminZoneSidebarProps> = ({
         {/* Navigation Menu */}
         <nav className="flex-1 p-6 overflow-y-auto">
           <ul className="space-y-2">
-            {menuItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => handleMenuItemClick(item.href, !!item.badge)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
-                    currentPage === item.id
-                      ? 'bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white shadow-lg'
-                      : 'text-white/80 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3 text-left">
-                    <span className={currentPage === item.id ? 'text-white' : 'text-white/60 group-hover:text-white'}>
-                      {item.icon}
-                    </span>
-                    <span className={`${getClass('body')} font-medium text-left`}>
-                      {item.label}
-                    </span>
-                  </div>
-                  
-                  {/* Badge */}
-                  {item.badge && (
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getBadgeStyles(item.badge.color)}`}>
-                      {item.badge.text}
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
+            {menuItems.map((item) => {
+              // Handle Applications menu item specially
+              if (item.id === 'admin/applications') {
+                return (
+                  <li key={item.id}>
+                    {/* Main Applications Button */}
+                    <button
+                      onClick={handleApplicationsToggle}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+                        isApplicationsPageActive(currentPage)
+                          ? 'bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white shadow-lg'
+                          : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 text-left">
+                        <span className={isApplicationsPageActive(currentPage) ? 'text-white' : 'text-white/60 group-hover:text-white'}>
+                          {item.icon}
+                        </span>
+                        <span className={`${getClass('body')} font-medium text-left`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {/* Expand/Collapse Icon */}
+                        <span className={`transition-transform duration-200 ${
+                          isApplicationsPageActive(currentPage) ? 'text-white' : 'text-white/60 group-hover:text-white'
+                        } ${isApplicationsExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                          {isApplicationsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Applications Submenu Items */}
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isApplicationsExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}>
+                      <ul className="mt-2 space-y-1 ml-4">
+                        {applicationsSubmenuItems.map((subItem) => (
+                          <li key={subItem.id}>
+                            <button
+                              onClick={() => handleMenuItemClick(subItem.href)}
+                              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 group text-left ${
+                                currentPage === subItem.id
+                                  ? 'bg-gradient-to-r from-[#FCB283]/20 to-[#AA4626]/20 text-[#FCB283] border border-[#FCB283]/30'
+                                  : 'text-white/70 hover:bg-white/5 hover:text-white/90'
+                              }`}
+                            >
+                              <span className={currentPage === subItem.id ? 'text-[#FCB283]' : 'text-white/50 group-hover:text-white/70'}>
+                                {subItem.icon}
+                              </span>
+                              <span className={`${getClass('body')} text-sm font-medium`}>
+                                {subItem.label}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </li>
+                );
+              }
+
+              // Handle Activities & Events menu item specially
+              if (item.id === 'admin/activities') {
+                return (
+                  <li key={item.id}>
+                    {/* Main Activities & Events Button */}
+                    <button
+                      onClick={handleActivitiesToggle}
+                      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+                        isActivitiesPageActive(currentPage)
+                          ? 'bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white shadow-lg'
+                          : 'text-white/80 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3 text-left">
+                        <span className={isActivitiesPageActive(currentPage) ? 'text-white' : 'text-white/60 group-hover:text-white'}>
+                          {item.icon}
+                        </span>
+                        <span className={`${getClass('body')} font-medium text-left`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        {/* Expand/Collapse Icon */}
+                        <span className={`transition-transform duration-200 ${
+                          isActivitiesPageActive(currentPage) ? 'text-white' : 'text-white/60 group-hover:text-white'
+                        } ${isActivitiesExpanded ? 'rotate-0' : '-rotate-90'}`}>
+                          {isActivitiesExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Activities Submenu Items */}
+                    <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isActivitiesExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}>
+                      <ul className="mt-2 space-y-1 ml-4">
+                        {activitiesSubmenuItems.map((subItem) => (
+                          <li key={subItem.id}>
+                            <button
+                              onClick={() => handleMenuItemClick(subItem.href)}
+                              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-all duration-200 group text-left ${
+                                currentPage === subItem.id
+                                  ? 'bg-gradient-to-r from-[#FCB283]/20 to-[#AA4626]/20 text-[#FCB283] border border-[#FCB283]/30'
+                                  : 'text-white/70 hover:bg-white/5 hover:text-white/90'
+                              }`}
+                            >
+                              <span className={currentPage === subItem.id ? 'text-[#FCB283]' : 'text-white/50 group-hover:text-white/70'}>
+                                {subItem.icon}
+                              </span>
+                              <span className={`${getClass('body')} text-sm font-medium`}>
+                                {subItem.label}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </li>
+                );
+              }
+
+              // Regular menu items
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => handleMenuItemClick(item.href, !!item.badge)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group ${
+                      currentPage === item.id
+                        ? 'bg-gradient-to-r from-[#AA4626] to-[#FCB283] text-white shadow-lg'
+                        : 'text-white/80 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 text-left">
+                      <span className={currentPage === item.id ? 'text-white' : 'text-white/60 group-hover:text-white'}>
+                        {item.icon}
+                      </span>
+                      <span className={`${getClass('body')} font-medium text-left`}>
+                        {item.label}
+                      </span>
+                    </div>
+                    
+                    {/* Badge */}
+                    {item.badge && (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getBadgeStyles(item.badge.color)}`}>
+                        {item.badge.text}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 

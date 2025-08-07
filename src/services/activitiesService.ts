@@ -14,7 +14,8 @@ import {
   Timestamp,
   writeBatch,
   QueryDocumentSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore';
 import { 
   ref, 
@@ -52,24 +53,34 @@ export class ActivitiesService {
    * Create a new activity
    */
   async createActivity(formData: ActivityFormData, userId: string): Promise<Activity> {
+    console.log('Creating activity with data:', { 
+      name: formData.name, 
+      userId, 
+      collection: ACTIVITIES_COLLECTION 
+    });
+    
     try {
       let imageUrl = '';
       let imagePath = '';
 
       // Upload image if provided
       if (formData.image) {
+        console.log('Uploading activity image...');
         const result = await this.uploadActivityImage(formData.image);
         imageUrl = result.downloadURL;
         imagePath = result.path;
+        console.log('Image uploaded successfully:', imageUrl);
       }
 
       // Prepare activity data for Firestore
-      const activityData: Omit<ActivityFirestoreDoc, 'id'> = {
+      const activityData: any = {
         name: formData.name.trim(),
         shortDescription: formData.shortDescription.trim(),
         status: formData.status,
         isPublic: formData.isPublic,
+        needSubmission: formData.needSubmission,
         maxParticipants: formData.maxParticipants,
+        isOneDayActivity: formData.isOneDayActivity,
         eventDate: formData.eventDate,
         startTime: formData.startTime,
         endTime: formData.endTime,
@@ -93,19 +104,43 @@ export class ActivitiesService {
         views: 0
       };
 
+      // Only add eventEndDate if it's a multi-day activity and has a value
+      if (!formData.isOneDayActivity && formData.eventEndDate) {
+        activityData.eventEndDate = formData.eventEndDate;
+      }
+
+      console.log('Prepared activity data for Firestore:', activityData);
+
       // Add to Firestore
+      console.log('Adding document to Firestore collection:', ACTIVITIES_COLLECTION);
       const docRef = await addDoc(collection(db, ACTIVITIES_COLLECTION), activityData);
+      console.log('Document added successfully with ID:', docRef.id);
 
       // Return the created activity
-      return this.convertFirestoreDocToActivity({
+      const createdActivity = this.convertFirestoreDocToActivity({
         id: docRef.id,
         ...activityData,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       });
+      
+      console.log('Activity created successfully:', createdActivity);
+      return createdActivity;
     } catch (error) {
       console.error('Error creating activity:', error);
-      throw new Error('Failed to create activity');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('Permission denied. Please check your admin privileges.');
+        } else if (error.message.includes('network')) {
+          throw new Error('Network error. Please check your internet connection.');
+        } else {
+          throw new Error(`Failed to create activity: ${error.message}`);
+        }
+      }
+      
+      throw new Error('Failed to create activity due to an unknown error');
     }
   }
 
@@ -328,7 +363,7 @@ export class ActivitiesService {
       }
 
       // Prepare update data
-      const updateData: Partial<ActivityFirestoreDoc> = {
+      const updateData: any = {
         updatedAt: serverTimestamp(),
         updatedBy: userId
       };
@@ -338,8 +373,24 @@ export class ActivitiesService {
       if (formData.shortDescription !== undefined) updateData.shortDescription = formData.shortDescription.trim();
       if (formData.status !== undefined) updateData.status = formData.status;
       if (formData.isPublic !== undefined) updateData.isPublic = formData.isPublic;
+      if (formData.needSubmission !== undefined) updateData.needSubmission = formData.needSubmission;
       if (formData.maxParticipants !== undefined) updateData.maxParticipants = formData.maxParticipants;
+      if (formData.isOneDayActivity !== undefined) updateData.isOneDayActivity = formData.isOneDayActivity;
       if (formData.eventDate !== undefined) updateData.eventDate = formData.eventDate;
+      
+      // Handle eventEndDate properly - avoid undefined values
+      if (formData.isOneDayActivity !== undefined || formData.eventEndDate !== undefined) {
+        const isOneDayActivity = formData.isOneDayActivity !== undefined ? formData.isOneDayActivity : currentData.isOneDayActivity;
+        
+        if (isOneDayActivity) {
+          // For one-day activities, remove the eventEndDate field
+          updateData.eventEndDate = deleteField();
+        } else if (formData.eventEndDate) {
+          // For multi-day activities, set the eventEndDate if provided
+          updateData.eventEndDate = formData.eventEndDate;
+        }
+      }
+      
       if (formData.startTime !== undefined) updateData.startTime = formData.startTime;
       if (formData.endTime !== undefined) updateData.endTime = formData.endTime;
       if (formData.registrationDeadline !== undefined) updateData.registrationDeadline = formData.registrationDeadline;
@@ -359,7 +410,9 @@ export class ActivitiesService {
       }
 
       // Update in Firestore
+      console.log('Updating activity with data:', updateData);
       await updateDoc(docRef, updateData);
+      console.log('Activity updated successfully');
 
       // Return updated activity
       const updatedDoc = await getDoc(docRef);
@@ -369,7 +422,19 @@ export class ActivitiesService {
       } as ActivityFirestoreDoc);
     } catch (error) {
       console.error('Error updating activity:', error);
-      throw new Error('Failed to update activity');
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          throw new Error('Permission denied. Please check your admin privileges.');
+        } else if (error.message.includes('network')) {
+          throw new Error('Network error. Please check your internet connection.');
+        } else {
+          throw new Error(`Failed to update activity: ${error.message}`);
+        }
+      }
+      
+      throw new Error('Failed to update activity due to an unknown error');
     }
   }
 
@@ -481,8 +546,11 @@ export class ActivitiesService {
         shortDescription: original.shortDescription,
         status: 'draft', // Always start as draft
         isPublic: false, // Make private by default
+        needSubmission: original.needSubmission,
         maxParticipants: original.maxParticipants,
+        isOneDayActivity: original.isOneDayActivity,
         eventDate: original.eventDate,
+        eventEndDate: original.eventEndDate || '',
         startTime: original.startTime,
         endTime: original.endTime,
         registrationDeadline: original.registrationDeadline,
@@ -770,8 +838,11 @@ export class ActivitiesService {
       shortDescription: doc.shortDescription,
       status: doc.status,
       isPublic: doc.isPublic,
+      needSubmission: doc.needSubmission || false,
       maxParticipants: doc.maxParticipants,
+      isOneDayActivity: doc.isOneDayActivity !== undefined ? doc.isOneDayActivity : true,
       eventDate: doc.eventDate,
+      eventEndDate: doc.eventEndDate,
       startTime: doc.startTime,
       endTime: doc.endTime,
       registrationDeadline: doc.registrationDeadline,

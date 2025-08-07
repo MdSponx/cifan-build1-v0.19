@@ -7,10 +7,13 @@ export interface Activity {
   shortDescription: string;
   status: ActivityStatus;
   isPublic: boolean;
+  needSubmission: boolean; // New field for registration requirement
   maxParticipants: number;
   
   // Date and Venue
-  eventDate: string; // ISO date string
+  isOneDayActivity: boolean; // New field for one day activities
+  eventDate: string; // ISO date string (start date)
+  eventEndDate?: string; // ISO date string (end date for multi-day events)
   startTime: string; // HH:mm format
   endTime: string; // HH:mm format
   registrationDeadline: string; // ISO date string
@@ -57,10 +60,13 @@ export interface ActivityFormData {
   shortDescription: string;
   status: ActivityStatus;
   isPublic: boolean;
+  needSubmission: boolean; // New field for registration requirement
   maxParticipants: number;
   
   // Date and Venue
-  eventDate: string; // ISO date string
+  isOneDayActivity: boolean; // New field for one day activities
+  eventDate: string; // ISO date string (start date)
+  eventEndDate: string; // ISO date string (end date for multi-day events)
   startTime: string; // HH:mm format
   endTime: string; // HH:mm format
   registrationDeadline: string; // ISO date string
@@ -251,6 +257,7 @@ export interface ActivityValidationErrors {
   name?: string;
   shortDescription?: string;
   eventDate?: string;
+  eventEndDate?: string;
   startTime?: string;
   endTime?: string;
   registrationDeadline?: string;
@@ -318,8 +325,11 @@ export interface ActivityFirestoreDoc {
   shortDescription: string;
   status: ActivityStatus;
   isPublic: boolean;
+  needSubmission: boolean; // New field for registration requirement
   maxParticipants: number;
-  eventDate: string; // ISO date string
+  isOneDayActivity: boolean; // New field for one day activities
+  eventDate: string; // ISO date string (start date)
+  eventEndDate?: string; // ISO date string (end date for multi-day events)
   startTime: string; // HH:mm format
   endTime: string; // HH:mm format
   registrationDeadline: string; // ISO date string
